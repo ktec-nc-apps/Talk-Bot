@@ -26,7 +26,7 @@ class GeminiApiEngine extends AbstractHttpEngine {
 		return 'gemini-api';
 	}
 
-	public function run(array $history, string $message, string $systemPrompt): TurnResult {
+	public function run(array $history, string $message, string $systemPrompt, bool $elevated = false): TurnResult {
 		$key = $this->config->getApiKey('gemini');
 		if ($key === '') {
 			return TurnResult::authError('No Gemini API key is configured.');

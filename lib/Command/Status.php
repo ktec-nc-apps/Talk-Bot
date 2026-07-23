@@ -52,6 +52,10 @@ class Status extends Base {
 		if ($mode === 'cli') {
 			$data['cli_path'] = $this->config->getCliPath();
 			$data['cli_home'] = $this->config->getCliHome() === '' ? '(default)' : $this->config->getCliHome();
+			$data['user_tools'] = $this->config->getUserTools() === '' ? 'none (sandboxed)' : $this->config->getUserTools();
+			$data['admin_tools'] = $this->config->areAdminToolsEnabled()
+				? $this->config->getAdminTools() . ' (admin group only)'
+				: 'none (admins treated like everyone else)';
 		}
 
 		if (!$this->talk->isTalkAvailable()) {

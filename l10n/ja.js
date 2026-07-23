@@ -64,6 +64,12 @@ OC.L10N.register(
     "Contacting the AI service…": "AIサービスに接続しています…",
     "{engine} answered using {model}: {reply}": "{engine} が {model} で応答しました: {reply}",
     "No answer: {detail}": "応答がありません: {detail}",
-    "The model tried to use a tool it does not have. Please ask again.": "モデルが、持っていないツールを使おうとしました。もう一度お尋ねください。"
+    "The model tried to use a tool it does not have. Please ask again.": "モデルが、持っていないツールを使おうとしました。もう一度お尋ねください。",
+    "Tools for ordinary users": "一般ユーザー向けのツール",
+    "Empty means no tools at all: the bot can only talk. Otherwise a comma separated list, for example WebSearch. Applies to everyone who is not a Nextcloud administrator.": "空欄なら一切のツールを与えません（会話のみ）。使わせる場合はカンマ区切りで指定します（例: WebSearch）。Nextcloud管理者以外のすべての人に適用されます。",
+    "empty = no tools (recommended)": "空欄＝ツールなし（推奨）",
+    "Tools for Nextcloud administrators": "Nextcloud管理者向けのツール",
+    "⚠ Leave empty unless you mean it. Anything you put here — \"default\" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.": "⚠ 本当に必要な場合以外は空欄にしてください。ここに入れた値（全ツールなら \"default\"、あるいは Bash,Read,Edit のような一覧）は、adminグループの全メンバーが、チャットのメッセージからこのサーバー上で、Webサーバーのユーザー権限で実行できるようになります。空欄なら、管理者も他のユーザーと同じ扱いです。",
+    "empty = administrators get no tools either": "空欄＝管理者にもツールを与えない"
 },
 "nplurals=1; plural=0;");

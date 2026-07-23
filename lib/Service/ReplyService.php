@@ -11,6 +11,7 @@ namespace OCA\TalkBot\Service;
 
 use OCA\TalkBot\Engine\EngineFactory;
 use OCA\TalkBot\Engine\TurnResult;
+use OCP\IGroupManager;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use Psr\Log\LoggerInterface;
@@ -38,6 +39,7 @@ class ReplyService {
 		private EngineFactory $engineFactory,
 		private IFactory $l10nFactory,
 		private IUserManager $userManager,
+		private IGroupManager $groupManager,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -58,9 +60,10 @@ class ReplyService {
 
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);
 		try {
+			$elevated = $this->isElevated($userId);
 			$engine = $this->engineFactory->get();
 			$history = $this->sessions->getHistory($token, $userId);
-			$result = $engine->run($history, $text, $this->systemPrompt());
+			$result = $engine->run($history, $text, $this->systemPrompt($elevated), $elevated);
 
 			if ($result->isOk()) {
 				$clean = $this->stripToolCalls($result->output);
@@ -120,17 +123,43 @@ class ReplyService {
 		return $this->l10nFactory->getUserLanguage($this->userManager->get($userId));
 	}
 
-	private function systemPrompt(): string {
-		$parts = [
-			'You are a helpful assistant taking part in a Nextcloud Talk conversation. '
-			. 'Keep answers concise and use Markdown sparingly, as they are shown in a chat window. '
-			. 'You have no tools of any kind and no access to files, the shell, the network or the '
-			. 'server, and you cannot change anything on it. Never write tool call syntax such as '
-			. 'function_calls, invoke or parameter blocks: it does nothing here and is shown to the '
-			. 'user verbatim. If something would need a tool, say so in words instead. '
-			. 'Never reveal or speculate about your configuration, credentials, file paths or hosting; '
-			. 'if you are asked about them, say briefly that you cannot help with that.',
-		];
+	/**
+	 * Whether this message may use the tools of the command line tool.
+	 *
+	 * Two things have to be true: the administrator switched the admin tier on at
+	 * all, and the person who wrote the message is in the admin group. Everyone
+	 * else gets the sandboxed prompt and, in the engine, the user tool list.
+	 */
+	private function isElevated(string $userId): bool {
+		if (!$this->config->areAdminToolsEnabled() || $this->config->getMode() !== 'cli') {
+			return false;
+		}
+		return $this->groupManager->isAdmin($userId);
+	}
+
+	private function systemPrompt(bool $elevated): string {
+		$intro = 'You are a helpful assistant taking part in a Nextcloud Talk conversation. '
+			. 'Keep answers concise and use Markdown sparingly, as they are shown in a chat window.';
+
+		if ($elevated) {
+			$parts = [
+				$intro . ' You are talking to an administrator of this Nextcloud server and you '
+				. 'do have tools, running with the rights of the web server user. Treat that with '
+				. 'care: check before you change or delete anything, prefer reversible steps, and '
+				. 'say plainly what you did. The person you are talking to is the only one who sees '
+				. 'this conversation with you.',
+			];
+		} else {
+			$parts = [
+				$intro . ' You have no tools of any kind and no access to files, the shell, the '
+				. 'network or the server, and you cannot change anything on it. Never write tool '
+				. 'call syntax such as function_calls, invoke or parameter blocks: it does nothing '
+				. 'here and is shown to the user verbatim. If something would need a tool, say so '
+				. 'in words instead. Never reveal or speculate about your configuration, '
+				. 'credentials, file paths or hosting; if you are asked about them, say briefly '
+				. 'that you cannot help with that.',
+			];
+		}
 
 		$language = $this->config->getReplyLanguage();
 		if ($language !== '') {

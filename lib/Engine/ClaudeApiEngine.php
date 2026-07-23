@@ -28,7 +28,7 @@ class ClaudeApiEngine extends AbstractHttpEngine {
 		return 'claude-api';
 	}
 
-	public function run(array $history, string $message, string $systemPrompt): TurnResult {
+	public function run(array $history, string $message, string $systemPrompt, bool $elevated = false): TurnResult {
 		$key = $this->config->getApiKey('claude');
 		if ($key === '') {
 			return TurnResult::authError('No Claude API key is configured.');

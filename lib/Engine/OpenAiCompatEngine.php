@@ -21,7 +21,7 @@ class OpenAiCompatEngine extends AbstractHttpEngine {
 		return 'openai-compatible';
 	}
 
-	public function run(array $history, string $message, string $systemPrompt): TurnResult {
+	public function run(array $history, string $message, string $systemPrompt, bool $elevated = false): TurnResult {
 		$messages = [['role' => 'system', 'content' => $systemPrompt]];
 		foreach ($history as $turn) {
 			$messages[] = [

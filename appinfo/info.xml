@@ -11,34 +11,52 @@
 **Talk Bot** turns any Nextcloud Talk conversation into an AI chat.
 
 Enable the app, put your API key in the admin settings, and switch the bot on in a
-conversation — that is the whole setup. No external daemon, no webhook endpoint and
-no shell access are required: the bot runs entirely inside Nextcloud as a Talk
-in-app bot.
+conversation — that is the whole setup. No external daemon, no webhook endpoint,
+no Docker image and no separate machine are required: the bot runs entirely inside
+Nextcloud as a Talk in-app bot, in a few hundred kilobytes of PHP.
 
-### Features
+### Light by design
 
-- **Bring your own model.** Anthropic Claude, Google Gemini, or **any
-  OpenAI-compatible endpoint** — OpenRouter, DeepSeek, Qwen/DashScope, Mistral,
-  Groq, OpenAI itself, or a local server such as Ollama, vLLM or LM Studio.
-- **Pick the model from a list.** The settings page fetches the models your key can
-  actually use and shows them in a dropdown, so there is nothing to type by hand.
-- **Connection test.** One button verifies that the selected engine, key and model
-  really answer before your users try it.
-- **Per-conversation memory.** Each user keeps their own conversation history in
-  every room; `/reset` starts over.
-- **Slash commands** — `/help`, `/reset`, `/status`.
+One small app, installed from the App Store like any other. There is nothing else
+to run and nothing else to keep alive. It answers off the request path, so posting
+a message never waits for the model.
+
+### Bring your own model — or your own subscription
+
+- **Native and OpenAI-compatible.** Anthropic Claude and Google Gemini through
+  their own APIs, plus **any OpenAI-compatible endpoint**: OpenRouter, DeepSeek,
+  Qwen/DashScope, Mistral, Groq, OpenAI itself, or a local server such as Ollama,
+  vLLM or LM Studio.
+- **Use a CLI subscription instead of API tokens.** If a Claude or Gemini command
+  line tool is installed on the server, the bot can drive it — so a flat-rate
+  subscription answers your users, with no per-token API bill. Off by default.
+- **Pick the model from a list.** The settings page fetches the models your key
+  can actually use, so there is nothing to type by hand, and only one place to set
+  it. A connection test confirms it answers before your users try it.
+
+### Two tiers: helpers for everyone, maintenance for admins
+
+- **Ordinary users get a sandbox.** No tools, no files, no shell, no way to touch
+  the server — just a helpful assistant that answers questions.
+- **Administrators can get real access, only if you turn it on.** When the CLI
+  engine is used, you may grant the members of the Nextcloud admin group tools
+  that run with the web server's rights, so they can look into and maintain the
+  server straight from a Talk conversation. Everyone who is not an administrator
+  stays in the sandbox. Both tiers are empty by default.
+
+### And the rest
+
+- **Per-conversation memory.** Each user keeps their own history in every room;
+  `/reset` starts over. Slash commands: `/help`, `/reset`, `/status`.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
-- **Reply language.** Answer always in a fixed language, or mirror whatever the
-  user writes.
-- **Optional local CLI engine.** If a Claude or Gemini command line tool is
-  installed on the server, the bot can drive it instead of an API key. Disabled by
-  default.
+- **Reply language.** Answer always in a fixed language, or mirror the user.
 
 ### Privacy
 
-Messages sent to the bot are forwarded to the AI provider you configure, and to
-nobody else. API keys are stored encrypted in the Nextcloud configuration. If you
-point the bot at a local model server, no data leaves your machine at all.
+Messages sent to the bot go to the AI provider you configure, and nowhere else.
+API keys are stored encrypted in the Nextcloud configuration and are never sent
+back to the browser. Point the bot at a local model server and nothing leaves your
+machine at all.
 
 Requires the Nextcloud Talk app.
 	]]></description>
@@ -47,31 +65,49 @@ Requires the Nextcloud Talk app.
 **トークボット** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
 
 アプリを有効化し、管理設定に API キーを入れ、会話でボットをオンにする——設定はこれだけです。
-外部デーモンも Webhook の受け口もシェルへのアクセスも不要で、ボットは Talk の
-アプリ内ボットとして Nextcloud の中だけで動作します。
+外部デーモンも Webhook の受け口も Docker イメージも別マシンも不要で、ボットは Talk の
+アプリ内ボットとして、数百KBの PHP だけで Nextcloud の中だけで動作します。
 
-### 特長
+### 軽さが身上
 
-- **好きなモデルを使えます。** Anthropic Claude、Google Gemini、そして
-  **OpenAI互換のエンドポイントすべて**（OpenRouter・DeepSeek・Qwen/DashScope・
-  Mistral・Groq・OpenAI 本家、Ollama や vLLM、LM Studio などのローカルサーバー）。
-- **モデルは一覧から選べます。** 設定画面がキーで実際に使えるモデルを取得して
-  プルダウンに表示するので、モデル名を手で打つ必要はありません。
-- **接続テスト。** 選んだエンジン・キー・モデルが本当に応答するかを、
-  ボタン1つで利用者より先に確認できます。
-- **会話ごとの記憶。** 各ユーザーが各ルームで自分の会話履歴を保持します。
-  `/reset` でやり直せます。
-- **スラッシュコマンド** — `/help`、`/reset`、`/status`。
-- **利用制限。** 許可ユーザーの一覧でボットの利用者を絞れます。
-- **返答の言語。** 常に特定の言語で返す／利用者の言語に合わせる、を選べます。
-- **ローカルCLIエンジン（任意）。** サーバーに Claude や Gemini のコマンドライン
-  ツールが入っていれば、APIキーの代わりにそれを使えます。既定では無効です。
+App Store から普通のアプリと同じようにインストールする、1つの小さなアプリです。
+別に動かし続けるものはありません。応答はリクエストの外で作るので、メッセージの送信が
+生成完了まで待たされることもありません。
+
+### 好きなモデルを、あるいは手持ちのサブスクを
+
+- **ネイティブ＋OpenAI互換。** Anthropic Claude と Google Gemini はそれぞれの
+  ネイティブAPIで、さらに **OpenAI互換のエンドポイントすべて**（OpenRouter・DeepSeek・
+  Qwen/DashScope・Mistral・Groq・OpenAI 本家、Ollama や vLLM、LM Studio などのローカル
+  サーバー）に対応します。
+- **APIトークンの代わりにCLIのサブスクを使えます。** サーバーに Claude や Gemini の
+  コマンドラインツールが入っていれば、ボットがそれを使えます。定額のサブスクリプションで
+  利用者に応答でき、従量課金のAPI料金は不要です。既定では無効です。
+- **モデルは一覧から選べます。** 設定画面がキーで実際に使えるモデルを取得するので、
+  手で打つ必要はなく、指定する場所も1か所だけです。接続テストで、利用者より先に応答を
+  確認できます。
+
+### 二段構え：全員にはアシスタント、管理者にはメンテナンスも
+
+- **一般ユーザーはサンドボックス。** ツールなし・ファイルなし・シェルなし、サーバーに
+  触れる手段はありません。質問に答えるだけのアシスタントです。
+- **管理者には、有効化したときだけ本当のアクセスを。** CLIエンジン利用時に限り、
+  Nextcloud の admin グループのメンバーへ、Webサーバー権限で動くツールを与えられます。
+  Talk の会話からそのままサーバーを調べ、メンテナンスできます。管理者以外は常に
+  サンドボックスのままです。どちらの段も既定では空（＝無効）です。
+
+### その他
+
+- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`/reset` で
+  やり直せます。スラッシュコマンド： `/help`、`/reset`、`/status`。
+- **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
+- **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 
 ### プライバシー
 
 ボットに送られたメッセージは、設定した AI プロバイダーにのみ送信されます。
-API キーは Nextcloud の設定に暗号化して保存されます。ローカルのモデルサーバーを
-指定すれば、データは一切サーバーの外に出ません。
+API キーは Nextcloud の設定に暗号化して保存され、ブラウザーへ返されることはありません。
+ローカルのモデルサーバーを指定すれば、データは一切サーバーの外に出ません。
 
 Nextcloud Talk アプリが必要です。
 	]]></description>

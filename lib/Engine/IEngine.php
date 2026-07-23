@@ -22,8 +22,12 @@ interface IEngine {
 
 	/**
 	 * @param list<array{role: string, text: string}> $history Oldest first, excluding $message.
+	 * @param bool $elevated Whether the person asking is a Nextcloud administrator
+	 *                       and the admin tier is switched on. Only the command
+	 *                       line engine can act on it; the HTTP engines have no
+	 *                       tools to give either way.
 	 */
-	public function run(array $history, string $message, string $systemPrompt): TurnResult;
+	public function run(array $history, string $message, string $systemPrompt, bool $elevated = false): TurnResult;
 
 	/** List the model ids this engine can currently use. Empty when unavailable. */
 	public function listModels(): array;

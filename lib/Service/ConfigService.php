@@ -43,6 +43,8 @@ class ConfigService {
 		'claude_cli_path' => ['claude_cli_path', 'string', 'claude'],
 		'gemini_cli_path' => ['gemini_cli_path', 'string', 'gemini'],
 		'cli_home' => ['cli_home', 'string', ''],
+		'cli_user_tools' => ['cli_user_tools', 'string', ''],
+		'cli_admin_tools' => ['cli_admin_tools', 'string', ''],
 	];
 
 	/** Model ids are chosen in the tools panel, never typed into the form. */
@@ -189,6 +191,31 @@ class ConfigService {
 
 	public function getCliHome(): string {
 		return $this->getString('cli_home');
+	}
+
+	/**
+	 * Which tools of the command line tool ordinary users may reach.
+	 *
+	 * Empty — the default — means none at all: the bot can only talk.
+	 */
+	public function getUserTools(): string {
+		return $this->getString('cli_user_tools');
+	}
+
+	/**
+	 * Which tools Nextcloud administrators may reach.
+	 *
+	 * Empty — the default — means administrators get exactly what everyone else
+	 * gets. Setting it (for example to "default") hands anyone in the admin group
+	 * real access to this server through a chat message, so it has to be a
+	 * deliberate choice.
+	 */
+	public function getAdminTools(): string {
+		return $this->getString('cli_admin_tools');
+	}
+
+	public function areAdminToolsEnabled(): bool {
+		return $this->getAdminTools() !== '';
 	}
 
 	// -- behaviour -----------------------------------------------------------

@@ -162,6 +162,22 @@ class AdminForm implements IDeclarativeSettingsFormWithHandlers {
 					'placeholder' => '/var/lib/talkbot',
 					'default' => '',
 				],
+				[
+					'id' => 'cli_user_tools',
+					'title' => $this->l->t('Tools for ordinary users'),
+					'description' => $this->l->t('Empty means no tools at all: the bot can only talk. Otherwise a comma separated list, for example WebSearch. Applies to everyone who is not a Nextcloud administrator.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => $this->l->t('empty = no tools (recommended)'),
+					'default' => '',
+				],
+				[
+					'id' => 'cli_admin_tools',
+					'title' => $this->l->t('Tools for Nextcloud administrators'),
+					'description' => $this->l->t('⚠ Leave empty unless you mean it. Anything you put here — "default" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => $this->l->t('empty = administrators get no tools either'),
+					'default' => '',
+				],
 			],
 		];
 	}

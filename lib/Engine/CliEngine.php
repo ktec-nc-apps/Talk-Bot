@@ -49,7 +49,7 @@ class CliEngine implements IEngine {
 		return $this->provider . '-cli';
 	}
 
-	public function run(array $history, string $message, string $systemPrompt): TurnResult {
+	public function run(array $history, string $message, string $systemPrompt, bool $elevated = false): TurnResult {
 		$binary = $this->config->getCliPath($this->provider);
 		if ($binary === '') {
 			return TurnResult::error('No command line tool is configured.');
@@ -57,18 +57,37 @@ class CliEngine implements IEngine {
 
 		$prompt = $this->buildPrompt($history, $message);
 		$model = $this->config->getModel($this->provider);
+		$tools = $elevated ? $this->config->getAdminTools() : $this->config->getUserTools();
 
 		if ($this->provider === 'gemini') {
 			$argv = [$binary, '-m', $model, '-p', $systemPrompt . "\n\n" . $prompt];
+			if ($elevated && $tools !== '') {
+				// Gemini's tools cannot be listed one by one; it is all or nothing.
+				$argv[] = '--yolo';
+			}
 		} else {
 			$argv = [
 				$binary,
 				'-p', $prompt,
 				'--model', $model,
 				'--output-format', 'text',
-				'--tools', '',
+				// An empty list really does disable every tool: the model then has
+				// no way to touch the server, whatever the message asks for.
+				'--tools', $tools,
 				'--append-system-prompt', $systemPrompt,
 			];
+			if ($elevated && $tools !== '') {
+				// Tools cannot be approved interactively from a chat message, so
+				// running them at all requires this.
+				$argv[] = '--dangerously-skip-permissions';
+			}
+		}
+
+		if ($elevated && $tools !== '') {
+			$this->logger->warning('Talk Bot: running the command line tool with tools enabled for an administrator', [
+				'provider' => $this->provider,
+				'tools' => $tools,
+			]);
 		}
 
 		$run = $this->exec($argv, $this->config->getRequestTimeout());
@@ -141,7 +160,9 @@ class CliEngine implements IEngine {
 		if ($home !== '') {
 			$env['HOME'] = $home;
 		}
-		$cwd = $this->tempManager->getTemporaryFolder() ?: sys_get_temp_dir();
+		// Run in the tool's own home when there is one, so its project settings and
+		// any notes it keeps stay in the same place from one message to the next.
+		$cwd = is_dir($home) ? $home : ($this->tempManager->getTemporaryFolder() ?: sys_get_temp_dir());
 
 		$descriptors = [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 		$process = @proc_open($argv, $descriptors, $pipes, $cwd, $env);
