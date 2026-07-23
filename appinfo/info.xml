@@ -83,13 +83,13 @@ Nextcloud Talk アプリが必要です。
 	<category>integration</category>
 	<category>tools</category>
 
-	<website>https://github.com/ktec-nc-apps/TalkBot</website>
-	<bugs>https://github.com/ktec-nc-apps/TalkBot/issues</bugs>
-	<repository type="git">https://github.com/ktec-nc-apps/TalkBot.git</repository>
+	<website>https://github.com/ktec-nc-apps/Talk-Bot</website>
+	<bugs>https://github.com/ktec-nc-apps/Talk-Bot/issues</bugs>
+	<repository type="git">https://github.com/ktec-nc-apps/Talk-Bot.git</repository>
 
-	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/01-chat.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/02-settings.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/03-models.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/01-chat.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/02-settings.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/03-models.png</screenshot>
 
 	<dependencies>
 		<php min-version="8.1"/>
