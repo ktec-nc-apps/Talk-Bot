@@ -1,0 +1,5 @@
+*.key
+*.csr
+*.crt
+*.tar.gz
+.DS_Store

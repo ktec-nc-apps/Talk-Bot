@@ -1,0 +1,83 @@
+/**
+ * SPDX-FileCopyrightText: 2026 KTEC
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+#talkbot-tools .tb-hidden {
+	display: none;
+}
+
+#talkbot-tools .tb-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+#talkbot-tools .tb-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+#talkbot-tools #tb-spinner {
+	font-size: 18px;
+}
+
+#talkbot-tools #tb-result:not(:empty) {
+	margin: 8px 0 16px;
+	padding: 8px 12px;
+	border-radius: var(--border-radius-large, 8px);
+	border-inline-start: 4px solid var(--color-border, #ddd);
+	background-color: var(--color-background-hover);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	max-width: 700px;
+}
+
+#talkbot-tools #tb-result.tb-ok {
+	border-inline-start-color: var(--color-success, #46ba61);
+}
+
+#talkbot-tools #tb-result.tb-err {
+	border-inline-start-color: var(--color-error, #e9322d);
+}
+
+#talkbot-tools .tb-model-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 16px;
+}
+
+#talkbot-tools #tb-model-select {
+	min-width: 260px;
+	max-width: 100%;
+	height: 36px;
+}
+
+#talkbot-tools h3 small {
+	font-weight: normal;
+	color: var(--color-text-maxcontrast);
+	margin-inline-start: 8px;
+}
+
+#talkbot-tools #tb-engines {
+	margin: 0 0 8px;
+	padding: 0;
+	list-style: none;
+}
+
+#talkbot-tools #tb-engines li {
+	padding: 2px 0;
+	overflow-wrap: anywhere;
+}
+
+#talkbot-tools #tb-engines .tb-not-ready {
+	color: var(--color-text-maxcontrast);
+}

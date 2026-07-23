@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+	<id>talkbot</id>
+	<name>Talk Bot</name>
+	<name lang="ja">トークボット</name>
+
+	<summary>Chat with Claude, Gemini or any OpenAI-compatible model right inside Nextcloud Talk</summary>
+	<summary lang="ja">Nextcloud Talk の中で Claude / Gemini / OpenAI互換モデルと会話できるボット</summary>
+
+	<description><![CDATA[
+**Talk Bot** turns any Nextcloud Talk conversation into an AI chat.
+
+Enable the app, put your API key in the admin settings, and switch the bot on in a
+conversation — that is the whole setup. No external daemon, no webhook endpoint and
+no shell access are required: the bot runs entirely inside Nextcloud as a Talk
+in-app bot.
+
+### Features
+
+- **Bring your own model.** Anthropic Claude, Google Gemini, or **any
+  OpenAI-compatible endpoint** — OpenRouter, DeepSeek, Qwen/DashScope, Mistral,
+  Groq, OpenAI itself, or a local server such as Ollama, vLLM or LM Studio.
+- **Pick the model from a list.** The settings page fetches the models your key can
+  actually use and shows them in a dropdown, so there is nothing to type by hand.
+- **Connection test.** One button verifies that the selected engine, key and model
+  really answer before your users try it.
+- **Per-conversation memory.** Each user keeps their own conversation history in
+  every room; `/reset` starts over.
+- **Slash commands** — `/help`, `/reset`, `/status`.
+- **Access control.** Optionally restrict the bot to an allow-list of users.
+- **Reply language.** Answer always in a fixed language, or mirror whatever the
+  user writes.
+- **Optional local CLI engine.** If a Claude or Gemini command line tool is
+  installed on the server, the bot can drive it instead of an API key. Disabled by
+  default.
+
+### Privacy
+
+Messages sent to the bot are forwarded to the AI provider you configure, and to
+nobody else. API keys are stored encrypted in the Nextcloud configuration. If you
+point the bot at a local model server, no data leaves your machine at all.
+
+Requires the Nextcloud Talk app.
+	]]></description>
+
+	<description lang="ja"><![CDATA[
+**トークボット** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
+
+アプリを有効化し、管理設定に API キーを入れ、会話でボットをオンにする——設定はこれだけです。
+外部デーモンも Webhook の受け口もシェルへのアクセスも不要で、ボットは Talk の
+アプリ内ボットとして Nextcloud の中だけで動作します。
+
+### 特長
+
+- **好きなモデルを使えます。** Anthropic Claude、Google Gemini、そして
+  **OpenAI互換のエンドポイントすべて**（OpenRouter・DeepSeek・Qwen/DashScope・
+  Mistral・Groq・OpenAI 本家、Ollama や vLLM、LM Studio などのローカルサーバー）。
+- **モデルは一覧から選べます。** 設定画面がキーで実際に使えるモデルを取得して
+  プルダウンに表示するので、モデル名を手で打つ必要はありません。
+- **接続テスト。** 選んだエンジン・キー・モデルが本当に応答するかを、
+  ボタン1つで利用者より先に確認できます。
+- **会話ごとの記憶。** 各ユーザーが各ルームで自分の会話履歴を保持します。
+  `/reset` でやり直せます。
+- **スラッシュコマンド** — `/help`、`/reset`、`/status`。
+- **利用制限。** 許可ユーザーの一覧でボットの利用者を絞れます。
+- **返答の言語。** 常に特定の言語で返す／利用者の言語に合わせる、を選べます。
+- **ローカルCLIエンジン（任意）。** サーバーに Claude や Gemini のコマンドライン
+  ツールが入っていれば、APIキーの代わりにそれを使えます。既定では無効です。
+
+### プライバシー
+
+ボットに送られたメッセージは、設定した AI プロバイダーにのみ送信されます。
+API キーは Nextcloud の設定に暗号化して保存されます。ローカルのモデルサーバーを
+指定すれば、データは一切サーバーの外に出ません。
+
+Nextcloud Talk アプリが必要です。
+	]]></description>
+
+	<version>2.0.0</version>
+	<licence>agpl</licence>
+	<author>KTEC</author>
+	<namespace>TalkBot</namespace>
+	<category>integration</category>
+	<category>tools</category>
+
+	<website>https://github.com/ktec-nc-apps/TalkBot</website>
+	<bugs>https://github.com/ktec-nc-apps/TalkBot/issues</bugs>
+	<repository type="git">https://github.com/ktec-nc-apps/TalkBot.git</repository>
+
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/01-chat.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/02-settings.png</screenshot>
+	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/TalkBot/main/screenshots/03-models.png</screenshot>
+
+	<dependencies>
+		<php min-version="8.1"/>
+		<nextcloud min-version="30" max-version="32"/>
+	</dependencies>
+
+	<repair-steps>
+		<post-migration>
+			<step>OCA\TalkBot\Migration\RegisterBot</step>
+		</post-migration>
+	</repair-steps>
+
+	<settings>
+		<admin>OCA\TalkBot\Settings\AdminTools</admin>
+		<admin-section>OCA\TalkBot\Sections\Admin\TalkBotSection</admin-section>
+	</settings>
+</info>
