@@ -62,7 +62,7 @@ class TalkService {
 			$mapper = Server::get('OCA\Talk\Model\BotServerMapper');
 			$bot = $mapper->findByUrl(Application::BOT_URL);
 		} catch (\Throwable $e) {
-			$this->logger->debug('Talk Bot: Talk does not know this bot yet: ' . $e->getMessage());
+			$this->logger->debug('Talk-Bot: Talk does not know this bot yet: ' . $e->getMessage());
 			return null;
 		}
 
@@ -113,7 +113,7 @@ class TalkService {
 			$result->closeCursor();
 			return $rooms;
 		} catch (\Throwable $e) {
-			$this->logger->warning('Talk Bot: could not read the conversation list from Talk: ' . $e->getMessage());
+			$this->logger->warning('Talk-Bot: could not read the conversation list from Talk: ' . $e->getMessage());
 			return [];
 		}
 	}

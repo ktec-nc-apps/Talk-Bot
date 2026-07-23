@@ -33,7 +33,7 @@ class OpenAiCompatEngine extends AbstractHttpEngine {
 
 		$model = $this->config->getModel('openai');
 		if ($model === '') {
-			return TurnResult::error('No model is selected. Pick one in the Talk Bot admin settings.');
+			return TurnResult::error('No model is selected. Pick one in the Talk-Bot admin settings.');
 		}
 
 		$result = $this->request(

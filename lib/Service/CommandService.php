@@ -55,7 +55,7 @@ class CommandService {
 
 	private function help(IL10N $l): string {
 		return implode("\n", [
-			'**' . $l->t('Talk Bot commands') . '**',
+			'**' . $l->t('Talk-Bot commands') . '**',
 			'- `/help` — ' . $l->t('show this help'),
 			'- `/reset` — ' . $l->t('forget the conversation and start over'),
 			'- `/status` — ' . $l->t('show the model in use and the size of this conversation'),

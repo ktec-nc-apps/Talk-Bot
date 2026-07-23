@@ -1,7 +1,7 @@
 OC.L10N.register(
     "talkbot",
 {
-    "Talk Bot": "トークボット",
+    "Talk-Bot": "Talk-Bot",
     "AI engine and access": "AIエンジンと利用範囲",
     "Choose which AI service answers, then pick a model and run a connection test in the panel below. Moderators switch the bot on per conversation, under Conversation settings → Bots.": "どのAIサービスが応答するかを選び、下のパネルでモデルの選択と接続テストを行います。会話ごとの有効化は、モデレーターが「会話の設定 → ボット」で切り替えます。",
     "AI service": "AIサービス",
@@ -45,7 +45,7 @@ OC.L10N.register(
     "API key is set.": "APIキーは設定済みです。",
     "No API key.": "APIキーがありません。",
     "command line tool": "コマンドラインツール",
-    "Talk Bot commands": "トークボットのコマンド",
+    "Talk-Bot commands": "Talk-Bot のコマンド",
     "show this help": "このヘルプを表示します",
     "forget the conversation and start over": "会話を忘れて最初からやり直します",
     "show the model in use and the size of this conversation": "使用中のモデルと、この会話の記憶量を表示します",
@@ -56,7 +56,7 @@ OC.L10N.register(
     "Remembered exchanges: %n": [
         "記憶している往復: %n"
     ],
-    "The AI service did not accept the credentials. An administrator needs to check the Talk Bot settings.": "AIサービスが認証情報を受け付けませんでした。管理者がトークボットの設定を確認する必要があります。",
+    "The AI service did not accept the credentials. An administrator needs to check the Talk-Bot settings.": "AIサービスが認証情報を受け付けませんでした。管理者が Talk-Bot の設定を確認する必要があります。",
     "Something went wrong: %s": "問題が発生しました: %s",
     "Something went wrong while answering.": "回答中に問題が発生しました。",
     "Loaded {count} models.": "{count} 件のモデルを取得しました。",

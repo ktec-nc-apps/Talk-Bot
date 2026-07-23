@@ -84,9 +84,9 @@ class BotApiService {
 			if ($status >= 200 && $status <= 299) {
 				return true;
 			}
-			$this->logger->warning('Talk Bot: Talk refused a bot request', ['status' => $status, 'path' => $path]);
+			$this->logger->warning('Talk-Bot: Talk refused a bot request', ['status' => $status, 'path' => $path]);
 		} catch (\Throwable $e) {
-			$this->logger->warning('Talk Bot: could not reach the Talk bot API: ' . $e->getMessage(), ['exception' => $e]);
+			$this->logger->warning('Talk-Bot: could not reach the Talk bot API: ' . $e->getMessage(), ['exception' => $e]);
 		}
 		return false;
 	}

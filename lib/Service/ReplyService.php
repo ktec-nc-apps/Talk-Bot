@@ -46,7 +46,7 @@ class ReplyService {
 
 	public function process(string $token, string $userId, int $messageId, string $text): void {
 		if (!$this->isAllowed($userId)) {
-			$this->logger->debug('Talk Bot: ignoring message from user outside the allow list', ['user' => $userId]);
+			$this->logger->debug('Talk-Bot: ignoring message from user outside the allow list', ['user' => $userId]);
 			return;
 		}
 
@@ -68,7 +68,7 @@ class ReplyService {
 			if ($result->isOk()) {
 				$clean = $this->stripToolCalls($result->output);
 				if ($clean === '') {
-					$this->logger->warning('Talk Bot: the model answered with tool call syntax only.');
+					$this->logger->warning('Talk-Bot: the model answered with tool call syntax only.');
 					$this->botApi->sendMessage($token, '⚠️ ' . $l->t('The model tried to use a tool it does not have. Please ask again.'), $messageId);
 					return;
 				}
@@ -80,23 +80,23 @@ class ReplyService {
 			}
 
 			if ($result->kind === TurnResult::KIND_AUTH_ERROR) {
-				$this->logger->error('Talk Bot: the AI engine rejected our credentials: ' . $result->detail);
+				$this->logger->error('Talk-Bot: the AI engine rejected our credentials: ' . $result->detail);
 				$this->botApi->sendMessage(
 					$token,
-					'⚠️ ' . $l->t('The AI service did not accept the credentials. An administrator needs to check the Talk Bot settings.'),
+					'⚠️ ' . $l->t('The AI service did not accept the credentials. An administrator needs to check the Talk-Bot settings.'),
 					$messageId,
 				);
 				return;
 			}
 
-			$this->logger->error('Talk Bot: engine error: ' . $result->detail);
+			$this->logger->error('Talk-Bot: engine error: ' . $result->detail);
 			$this->botApi->sendMessage(
 				$token,
 				'⚠️ ' . $l->t('Something went wrong: %s', [$this->truncate($result->detail, 500)]),
 				$messageId,
 			);
 		} catch (\Throwable $e) {
-			$this->logger->error('Talk Bot: unhandled error while answering: ' . $e->getMessage(), ['exception' => $e]);
+			$this->logger->error('Talk-Bot: unhandled error while answering: ' . $e->getMessage(), ['exception' => $e]);
 			$this->botApi->sendMessage($token, '⚠️ ' . $l->t('Something went wrong while answering.'), $messageId);
 		} finally {
 			if ($reacted) {

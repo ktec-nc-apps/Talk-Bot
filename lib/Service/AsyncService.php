@@ -80,7 +80,7 @@ class AsyncService {
 				return;
 			}
 			$this->logger->warning(
-				'Talk Bot: could not hand the answer off over HTTP, queuing a background job instead: ' . $e->getMessage(),
+				'Talk-Bot: could not hand the answer off over HTTP, queuing a background job instead: ' . $e->getMessage(),
 				['exception' => $e],
 			);
 			$this->jobList->add(ReplyJob::class, [

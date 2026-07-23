@@ -84,7 +84,7 @@ class CliEngine implements IEngine {
 		}
 
 		if ($elevated && $tools !== '') {
-			$this->logger->warning('Talk Bot: running the command line tool with tools enabled for an administrator', [
+			$this->logger->warning('Talk-Bot: running the command line tool with tools enabled for an administrator', [
 				'provider' => $this->provider,
 				'tools' => $tools,
 			]);
@@ -167,7 +167,7 @@ class CliEngine implements IEngine {
 		$descriptors = [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 		$process = @proc_open($argv, $descriptors, $pipes, $cwd, $env);
 		if (!is_resource($process)) {
-			$this->logger->error('Talk Bot: could not start ' . $argv[0]);
+			$this->logger->error('Talk-Bot: could not start ' . $argv[0]);
 			return ['code' => -1, 'stdout' => '', 'stderr' => 'Could not start ' . $argv[0], 'timedOut' => false];
 		}
 

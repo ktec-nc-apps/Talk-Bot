@@ -32,7 +32,7 @@ class TalkBotSection implements IIconSection {
 	}
 
 	public function getName(): string {
-		return $this->l->t('Talk Bot');
+		return $this->l->t('Talk-Bot');
 	}
 
 	public function getPriority(): int {

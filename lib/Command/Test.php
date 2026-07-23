@@ -43,7 +43,7 @@ class Test extends Base {
 	protected function execute(InputInterface $input, OutputInterface $output): int {
 		$model = $this->config->getModel();
 		if ($model === '') {
-			$output->writeln('<error>No model is selected. Pick one in Administration settings → Talk Bot.</error>');
+			$output->writeln('<error>No model is selected. Pick one in Administration settings → Talk-Bot.</error>');
 			return 1;
 		}
 

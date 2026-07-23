@@ -2,7 +2,7 @@
  * SPDX-FileCopyrightText: 2026 KTEC
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * Model picker and connection test for the Talk Bot admin settings.
+ * Model picker and connection test for the Talk-Bot admin settings.
  */
 (function () {
 	'use strict';

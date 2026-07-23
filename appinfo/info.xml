@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
 	<id>talkbot</id>
-	<name>Talk Bot</name>
-	<name lang="ja">トークボット</name>
+	<name>Talk-Bot</name>
+	<name lang="ja">Talk-Bot</name>
 
 	<summary>Chat with Claude, Gemini or any OpenAI-compatible model right inside Nextcloud Talk</summary>
 	<summary lang="ja">Nextcloud Talk の中で Claude / Gemini / OpenAI互換モデルと会話できるボット</summary>
 
 	<description><![CDATA[
-**Talk Bot** turns any Nextcloud Talk conversation into an AI chat.
+**Talk-Bot** turns any Nextcloud Talk conversation into an AI chat.
 
 Enable the app, put your API key in the admin settings, and switch the bot on in a
 conversation — that is the whole setup. No external daemon, no webhook endpoint,
@@ -62,7 +62,7 @@ Requires the Nextcloud Talk app.
 	]]></description>
 
 	<description lang="ja"><![CDATA[
-**トークボット** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
+**Talk-Bot** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
 
 アプリを有効化し、管理設定に API キーを入れ、会話でボットをオンにする——設定はこれだけです。
 外部デーモンも Webhook の受け口も Docker イメージも別マシンも不要で、ボットは Talk の
