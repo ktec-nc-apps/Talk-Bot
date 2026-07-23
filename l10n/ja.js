@@ -17,8 +17,6 @@ OC.L10N.register(
     "Base URL of the OpenAI-compatible endpoint": "OpenAI互換エンドポイントのベースURL",
     "For example https://openrouter.ai/api/v1, https://api.openai.com/v1 or http://localhost:11434/v1": "例: https://openrouter.ai/api/v1 、https://api.openai.com/v1 、http://localhost:11434/v1",
     "Reply language": "返答の言語",
-    "A language code such as en, ja or de. Leave empty to answer in whatever language the message was written in.": "en・ja・de などの言語コード。空欄にすると、書かれた言語に合わせて返答します。",
-    "empty = follow the user": "空欄＝利用者に合わせる",
     "Extra instructions for the assistant": "アシスタントへの追加指示",
     "Added to every conversation, for example a tone of voice or facts about your organisation.": "すべての会話に追加されます。口調の指定や、組織についての前提などにお使いください。",
     "Restrict the bot to selected users": "利用できるユーザーを限定する",
@@ -120,6 +118,8 @@ OC.L10N.register(
     "Cannot predict now.": "今は予測できません。",
     "Do not count on it.": "当てにしないでください。",
     "My reply is no.": "答えは「いいえ」です。",
-    "Very doubtful.": "かなり疑わしいです。"
+    "Very doubtful.": "かなり疑わしいです。",
+    "A language code such as en, ja or de to force one language for everyone. Leave empty to answer each user in the language they chose in Nextcloud.": "全員を1つの言語に固定する場合は en・ja・de などの言語コードを入力します。空欄にすると、各利用者が Nextcloud で選んでいる言語で返答します。",
+    "empty = each user's own language": "空欄＝各利用者の言語"
 },
 "nplurals=1; plural=0;");

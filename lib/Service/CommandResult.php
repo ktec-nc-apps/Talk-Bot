@@ -22,13 +22,12 @@ final class CommandResult {
 		public readonly ?string $reply,
 		public readonly ?string $prompt,
 		public readonly bool $persist,
-		public readonly bool $inUserLanguage,
 	) {
 	}
 
 	/** Post this text straight away; the model is not involved. */
 	public static function reply(string $text): self {
-		return new self($text, null, false, false);
+		return new self($text, null, false);
 	}
 
 	/**
@@ -36,14 +35,9 @@ final class CommandResult {
 	 *
 	 * @param bool $persist Whether the resulting exchange is kept in the history.
 	 *                      A retry keeps it; a one-off like a summary does not.
-	 * @param bool $inUserLanguage The prompt is synthetic English (a joke, a
-	 *                      summary), so — unless a fixed reply language is set —
-	 *                      answer in the user's own language rather than mirroring
-	 *                      this English text. A retry replays the user's real
-	 *                      words, so it leaves this false.
 	 */
-	public static function prompt(string $text, bool $persist, bool $inUserLanguage = false): self {
-		return new self(null, $text, $persist, $inUserLanguage);
+	public static function prompt(string $text, bool $persist): self {
+		return new self(null, $text, $persist);
 	}
 
 	public function isReply(): bool {

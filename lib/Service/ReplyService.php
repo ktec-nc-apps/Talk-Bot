@@ -50,11 +50,11 @@ class ReplyService {
 			return;
 		}
 
-		// Effective reply language: the per-conversation override wins, then the
-		// server default, then each user's own language.
-		$roomLang = $this->config->getRoomLanguage($token);
-		$lang = $roomLang !== '' ? $roomLang : $this->config->getReplyLanguage();
-		$l = $this->l10nFactory->get('talkbot', $this->messageLanguage($userId, $lang));
+		// Effective reply language: the per-conversation override (?lang) wins,
+		// then the server-wide setting, then the language the sender chose in
+		// Nextcloud. So by default the bot answers everyone in their own language.
+		$lang = $this->replyLanguage($token, $userId);
+		$l = $this->l10nFactory->get('talkbot', $lang);
 
 		$command = $this->commands->handle($text, $token, $userId, $l);
 		$persist = true;
@@ -66,12 +66,6 @@ class ReplyService {
 			// A prompt macro (retry, summary, joke): let the model answer it.
 			$text = $command->prompt;
 			$persist = $command->persist;
-			// A synthetic English prompt would otherwise be "mirrored" back in
-			// English; answer in the sender's own language instead when no fixed
-			// reply language is set.
-			if ($command->inUserLanguage && $lang === '') {
-				$lang = $this->l10nFactory->getUserLanguage($this->userManager->get($userId));
-			}
 		}
 
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);
@@ -79,7 +73,11 @@ class ReplyService {
 			$elevated = $this->isElevated($userId);
 			$engine = $this->engineFactory->get();
 			$history = $this->sessions->getHistory($token, $userId);
-			$result = $engine->run($history, $text, $this->systemPrompt($elevated, $lang), $elevated);
+			// The directive rides along with this turn's message — the strongest
+			// place to pin the reply language — while the history keeps the
+			// original text. The system prompt carries the same rule as a backstop.
+			$engineText = $this->withLanguageDirective($text, $lang);
+			$result = $engine->run($history, $engineText, $this->systemPrompt($elevated, $lang), $elevated);
 
 			if ($result->isOk()) {
 				$clean = $this->stripToolCalls($result->output);
@@ -128,13 +126,21 @@ class ReplyService {
 		return in_array($userId, $this->config->getAllowedUsers(), true);
 	}
 
-	/** Which language our own messages (commands, errors) should use. */
-	private function messageLanguage(string $userId, string $configured): string {
-		if ($configured !== '') {
-			return $configured;
+	/**
+	 * The language every reply in this conversation should use: the ?lang
+	 * override, else the server-wide setting, else the sender's own Nextcloud
+	 * language. The sender is looked up because this runs in a request of its
+	 * own, with no session user.
+	 */
+	private function replyLanguage(string $token, string $userId): string {
+		$room = $this->config->getRoomLanguage($token);
+		if ($room !== '') {
+			return $room;
 		}
-		// There is no session user here — this runs in a request of its own — so
-		// look the sender up and use the language they chose.
+		$server = $this->config->getReplyLanguage();
+		if ($server !== '') {
+			return $server;
+		}
 		return $this->l10nFactory->getUserLanguage($this->userManager->get($userId));
 	}
 
@@ -150,6 +156,19 @@ class ReplyService {
 			return false;
 		}
 		return $this->groupManager->isAdmin($userId);
+	}
+
+	/** English name of a language code, or the code itself when unknown. */
+	private function languageName(string $code): string {
+		return self::LANGUAGE_NAMES[strtolower(substr($code, 0, 2))] ?? $code;
+	}
+
+	/** Append a per-turn reply-language instruction, invisible to the stored history. */
+	private function withLanguageDirective(string $text, string $language): string {
+		if ($language === '') {
+			return $text;
+		}
+		return $text . "\n\n[Reply to this message in " . $this->languageName($language) . '.]';
 	}
 
 	private function systemPrompt(bool $elevated, string $language): string {
@@ -176,20 +195,25 @@ class ReplyService {
 			];
 		}
 
+		$extra = $this->config->getExtraSystemPrompt();
+		if ($extra !== '') {
+			$parts[] = $extra;
+		}
+
+		// The language rule goes last, and firmly: models otherwise tend to answer
+		// in whatever language the message happens to be in, but the reply language
+		// here is the user's own setting and must win.
 		if ($language !== '') {
-			$name = self::LANGUAGE_NAMES[strtolower(substr($language, 0, 2))] ?? $language;
+			$name = $this->languageName($language);
 			$parts[] = sprintf(
-				'Always reply in %s, whatever language these instructions or the question are written in, '
-				. 'unless the user explicitly asks for another language.',
+				'LANGUAGE — Write your entire reply in %1$s. This is a hard requirement: even '
+				. 'when the user writes to you in a different language, still answer in %1$s and do '
+				. 'not switch to match them. Only use another language if the user explicitly asks '
+				. 'you to translate something or to answer in a specific other language.',
 				$name,
 			);
 		} else {
 			$parts[] = 'Reply in the same language the user writes in.';
-		}
-
-		$extra = $this->config->getExtraSystemPrompt();
-		if ($extra !== '') {
-			$parts[] = $extra;
 		}
 
 		return implode("\n\n", $parts);

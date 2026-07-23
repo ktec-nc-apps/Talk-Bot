@@ -106,9 +106,9 @@ class AdminForm implements IDeclarativeSettingsFormWithHandlers {
 				[
 					'id' => 'reply_language',
 					'title' => $this->l->t('Reply language'),
-					'description' => $this->l->t('A language code such as en, ja or de. Leave empty to answer in whatever language the message was written in.'),
+					'description' => $this->l->t('A language code such as en, ja or de to force one language for everyone. Leave empty to answer each user in the language they chose in Nextcloud.'),
 					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = follow the user'),
+					'placeholder' => $this->l->t('empty = each user\'s own language'),
 					'default' => '',
 				],
 				[
