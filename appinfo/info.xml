@@ -2,7 +2,6 @@
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
 	<id>talkbot</id>
 	<name>Talk-Bot</name>
-	<name lang="ja">Talk-Bot</name>
 
 	<summary>Chat with Claude, Gemini or any OpenAI-compatible model right inside Nextcloud Talk</summary>
 	<summary lang="ja">Nextcloud Talk の中で Claude / Gemini / OpenAI互換モデルと会話できるボット</summary>

@@ -69,7 +69,8 @@
   "empty = no tools (recommended)": "空欄＝ツールなし（推奨）",
   "Tools for Nextcloud administrators": "Nextcloud管理者向けのツール",
   "⚠ Leave empty unless you mean it. Anything you put here — \"default\" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.": "⚠ 本当に必要な場合以外は空欄にしてください。ここに入れた値（全ツールなら \"default\"、あるいは Bash,Read,Edit のような一覧）は、adminグループの全メンバーが、チャットのメッセージからこのサーバー上で、Webサーバーのユーザー権限で実行できるようになります。空欄なら、管理者も他のユーザーと同じ扱いです。",
-  "empty = administrators get no tools either": "空欄＝管理者にもツールを与えない"
+  "empty = administrators get no tools either": "空欄＝管理者にもツールを与えない",
+  "The leading slash is optional: you can just type help, reset or status.": "先頭のスラッシュは省略できます。help・reset・status とそのまま入力してもかまいません。"
  },
  "pluralForm": "nplurals=1; plural=0;"
 }
