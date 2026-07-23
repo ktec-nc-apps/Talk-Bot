@@ -21,7 +21,7 @@ use OCP\IDBConnection;
  */
 class SessionService {
 
-	private const TABLE = 'talkbot_sessions';
+	public const TABLE = 'talkbot_sessions';
 
 	public function __construct(
 		private IDBConnection $db,

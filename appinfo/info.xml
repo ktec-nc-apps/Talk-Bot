@@ -102,6 +102,12 @@ Nextcloud Talk アプリが必要です。
 		</post-migration>
 	</repair-steps>
 
+	<commands>
+		<command>OCA\TalkBot\Command\Status</command>
+		<command>OCA\TalkBot\Command\Rooms</command>
+		<command>OCA\TalkBot\Command\Test</command>
+	</commands>
+
 	<settings>
 		<admin>OCA\TalkBot\Settings\AdminTools</admin>
 		<admin-section>OCA\TalkBot\Sections\Admin\TalkBotSection</admin-section>
