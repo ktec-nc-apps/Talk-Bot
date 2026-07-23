@@ -46,7 +46,7 @@ a message never waits for the model.
 ### And the rest
 
 - **Per-conversation memory.** Each user keeps their own history in every room;
-  `/reset` starts over. Slash commands: `/help`, `/reset`, `/status`.
+  `?reset` starts over. Commands: `?help`, `?reset`, `?status`.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
 
@@ -97,8 +97,8 @@ App Store から普通のアプリと同じようにインストールする、1
 
 ### その他
 
-- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`/reset` で
-  やり直せます。スラッシュコマンド： `/help`、`/reset`、`/status`。
+- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`?reset` で
+  やり直せます。コマンド： `?help`、`?reset`、`?status`。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 

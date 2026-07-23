@@ -224,6 +224,19 @@ class ConfigService {
 		return $this->getString('reply_language');
 	}
 
+	/** Per-conversation reply-language override, set with the ?lang command. */
+	public function getRoomLanguage(string $token): string {
+		return $this->getString('roomlang.' . $token);
+	}
+
+	public function setRoomLanguage(string $token, string $code): void {
+		if ($code === '') {
+			$this->appConfig->deleteKey(Application::APP_ID, 'roomlang.' . $token);
+			return;
+		}
+		$this->setString('roomlang.' . $token, $code);
+	}
+
 	public function getExtraSystemPrompt(): string {
 		return $this->getString('system_prompt');
 	}

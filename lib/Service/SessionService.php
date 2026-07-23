@@ -73,6 +73,24 @@ class SessionService {
 		$this->store($token, $userId, $this->trim($history));
 	}
 
+	/**
+	 * Drop the most recent user+assistant exchange and return the user's question
+	 * from it, or null if there is nothing to drop. Used by retry and undo.
+	 */
+	public function dropLastExchange(string $token, string $userId): ?string {
+		$history = $this->getHistory($token, $userId);
+		// Find the last assistant turn and the user turn right before it.
+		for ($i = count($history) - 1; $i >= 1; $i--) {
+			if ($history[$i]['role'] === 'assistant' && $history[$i - 1]['role'] === 'user') {
+				$question = $history[$i - 1]['text'];
+				array_splice($history, $i - 1, 2);
+				$this->store($token, $userId, array_values($history));
+				return $question;
+			}
+		}
+		return null;
+	}
+
 	public function reset(string $token, string $userId): void {
 		$query = $this->db->getQueryBuilder();
 		$query->delete(self::TABLE)

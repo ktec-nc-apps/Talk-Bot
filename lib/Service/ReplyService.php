@@ -50,12 +50,22 @@ class ReplyService {
 			return;
 		}
 
-		$l = $this->l10nFactory->get('talkbot', $this->userLanguage($userId));
+		// Effective reply language: the per-conversation override wins, then the
+		// server default, then each user's own language.
+		$roomLang = $this->config->getRoomLanguage($token);
+		$lang = $roomLang !== '' ? $roomLang : $this->config->getReplyLanguage();
+		$l = $this->l10nFactory->get('talkbot', $this->messageLanguage($userId, $lang));
 
-		$commandReply = $this->commands->handle($text, $token, $userId, $l);
-		if ($commandReply !== null) {
-			$this->botApi->sendMessage($token, $commandReply, $messageId);
-			return;
+		$command = $this->commands->handle($text, $token, $userId, $l);
+		$persist = true;
+		if ($command !== null) {
+			if ($command->isReply()) {
+				$this->botApi->sendMessage($token, $command->reply, $messageId);
+				return;
+			}
+			// A prompt macro (retry, summary, joke): let the model answer it.
+			$text = $command->prompt;
+			$persist = $command->persist;
 		}
 
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);
@@ -63,7 +73,7 @@ class ReplyService {
 			$elevated = $this->isElevated($userId);
 			$engine = $this->engineFactory->get();
 			$history = $this->sessions->getHistory($token, $userId);
-			$result = $engine->run($history, $text, $this->systemPrompt($elevated), $elevated);
+			$result = $engine->run($history, $text, $this->systemPrompt($elevated, $lang), $elevated);
 
 			if ($result->isOk()) {
 				$clean = $this->stripToolCalls($result->output);
@@ -73,7 +83,7 @@ class ReplyService {
 					return;
 				}
 				$answer = $this->truncate($clean, $this->config->getMaxResponseLength());
-				if ($this->botApi->sendMessage($token, $answer, $messageId)) {
+				if ($this->botApi->sendMessage($token, $answer, $messageId) && $persist) {
 					$this->sessions->appendTurn($token, $userId, $text, $clean);
 				}
 				return;
@@ -113,8 +123,7 @@ class ReplyService {
 	}
 
 	/** Which language our own messages (commands, errors) should use. */
-	private function userLanguage(string $userId): string {
-		$configured = $this->config->getReplyLanguage();
+	private function messageLanguage(string $userId, string $configured): string {
 		if ($configured !== '') {
 			return $configured;
 		}
@@ -137,7 +146,7 @@ class ReplyService {
 		return $this->groupManager->isAdmin($userId);
 	}
 
-	private function systemPrompt(bool $elevated): string {
+	private function systemPrompt(bool $elevated, string $language): string {
 		$intro = 'You are a helpful assistant taking part in a Nextcloud Talk conversation. '
 			. 'Keep answers concise and use Markdown sparingly, as they are shown in a chat window.';
 
@@ -161,7 +170,6 @@ class ReplyService {
 			];
 		}
 
-		$language = $this->config->getReplyLanguage();
 		if ($language !== '') {
 			$name = self::LANGUAGE_NAMES[strtolower(substr($language, 0, 2))] ?? $language;
 			$parts[] = sprintf(
