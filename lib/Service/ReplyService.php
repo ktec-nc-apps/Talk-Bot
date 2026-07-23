@@ -66,6 +66,12 @@ class ReplyService {
 			// A prompt macro (retry, summary, joke): let the model answer it.
 			$text = $command->prompt;
 			$persist = $command->persist;
+			// A synthetic English prompt would otherwise be "mirrored" back in
+			// English; answer in the sender's own language instead when no fixed
+			// reply language is set.
+			if ($command->inUserLanguage && $lang === '') {
+				$lang = $this->l10nFactory->getUserLanguage($this->userManager->get($userId));
+			}
 		}
 
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);

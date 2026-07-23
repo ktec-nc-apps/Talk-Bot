@@ -112,9 +112,10 @@ class CommandService {
 				return CommandResult::prompt(
 					'Summarise our conversation so far in a few short bullet points.',
 					false,
+					true,
 				);
 			case 'joke':
-				return CommandResult::prompt('Tell me a short, clean, genuinely funny joke.', false);
+				return CommandResult::prompt('Tell me a short, clean, genuinely funny joke.', false, true);
 			default:
 				return null;
 		}
