@@ -62,7 +62,7 @@ class AsyncService {
 
 		try {
 			$this->clientService->newClient()->post(
-				$this->urlGenerator->getAbsoluteURL('/index.php/apps/talkbot/process'),
+				$this->urlGenerator->getAbsoluteURL('/index.php/apps/ktec_talkbot/process'),
 				[
 					'headers' => [
 						'Content-Type' => 'application/json',

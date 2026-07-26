@@ -5,8 +5,8 @@
  *
  * @var \OCP\IL10N $l
  */
-\OCP\Util::addScript('talkbot', 'tools');
-\OCP\Util::addStyle('talkbot', 'tools');
+\OCP\Util::addScript('ktec_talkbot', 'tools');
+\OCP\Util::addStyle('ktec_talkbot', 'tools');
 ?>
 <div id="talkbot-tools" class="section">
 	<h2><?php p($l->t('Model and connection test')); ?></h2>

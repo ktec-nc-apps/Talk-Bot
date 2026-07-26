@@ -35,6 +35,10 @@ class BotApiService {
 	}
 
 	public function sendMessage(string $token, string $message, int $replyTo = 0, bool $silent = false): bool {
+		// Talk's API is JSON; a single invalid byte from a command line tool would
+		// otherwise make json_encode throw and drop the whole reply. Scrub first so
+		// the signature and the body agree on the exact bytes that get sent.
+		$message = $this->toValidUtf8($message);
 		$body = ['message' => $message, 'referenceId' => sha1($this->random->generate(32))];
 		if ($replyTo > 0) {
 			$body['replyTo'] = $replyTo;
@@ -89,5 +93,13 @@ class BotApiService {
 			$this->logger->warning('Talk-Bot: could not reach the Talk bot API: ' . $e->getMessage(), ['exception' => $e]);
 		}
 		return false;
+	}
+
+	/** Drop invalid UTF-8 so the reply survives json_encode on its way to Talk. */
+	private function toValidUtf8(string $text): string {
+		if (preg_match('//u', $text) === 1) {
+			return $text;
+		}
+		return mb_convert_encoding($text, 'UTF-8', 'UTF-8');
 	}
 }

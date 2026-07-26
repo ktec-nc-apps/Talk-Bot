@@ -54,7 +54,7 @@ class ReplyService {
 		// then the server-wide setting, then the language the sender chose in
 		// Nextcloud. So by default the bot answers everyone in their own language.
 		$lang = $this->replyLanguage($token, $userId);
-		$l = $this->l10nFactory->get('talkbot', $lang);
+		$l = $this->l10nFactory->get('ktec_talkbot', $lang);
 
 		$command = $this->commands->handle($text, $token, $userId, $l);
 		$persist = true;

@@ -24,6 +24,7 @@ use Psr\Log\LoggerInterface;
 class CliEngine implements IEngine {
 
 	private const CLAUDE_MODELS = [
+		'claude-opus-5',
 		'claude-opus-4-8',
 		'claude-opus-4-7',
 		'claude-sonnet-5',
@@ -100,7 +101,12 @@ class CliEngine implements IEngine {
 			return TurnResult::authError(trim(mb_substr($combined, 0, 300)));
 		}
 
+		// A command line tool can emit a stray non-UTF-8 byte; drop it here so the
+		// answer both stores cleanly and survives json_encode on its way to Talk.
 		$output = trim($run['stdout']);
+		if ($output !== '' && preg_match('//u', $output) !== 1) {
+			$output = mb_convert_encoding($output, 'UTF-8', 'UTF-8');
+		}
 		if ($output !== '') {
 			return TurnResult::ok($output);
 		}

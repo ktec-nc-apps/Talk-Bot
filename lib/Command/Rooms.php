@@ -16,7 +16,7 @@ use OCP\IDBConnection;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/** `occ talkbot:rooms` — the conversations the bot was switched on in. */
+/** `occ ktec_talkbot:rooms` — the conversations the bot was switched on in. */
 class Rooms extends Base {
 
 	public function __construct(
@@ -29,7 +29,7 @@ class Rooms extends Base {
 	protected function configure(): void {
 		parent::configure();
 		$this
-			->setName('talkbot:rooms')
+			->setName('ktec_talkbot:rooms')
 			->setDescription('List the conversations this bot is enabled in');
 	}
 

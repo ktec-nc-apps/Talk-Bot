@@ -55,7 +55,7 @@ class ConfigService {
 	];
 
 	private const MODEL_DEFAULTS = [
-		'claude' => 'claude-opus-4-8',
+		'claude' => 'claude-opus-5',
 		'gemini' => 'gemini-2.5-pro',
 		'openai' => '',
 	];

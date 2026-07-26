@@ -29,8 +29,8 @@ class AdminTools implements ISettings {
 		return Application::APP_ID;
 	}
 
-	/** Rendered after the declarative form, which uses priority 10. */
+	/** Between the engine choice (priority 10) and the keys/access form (30). */
 	public function getPriority(): int {
-		return 50;
+		return 20;
 	}
 }

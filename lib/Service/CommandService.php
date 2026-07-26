@@ -81,7 +81,7 @@ class CommandService {
 			case 'whoami':
 				return CommandResult::reply($this->whoami($userId, $l));
 			case 'version':
-				return CommandResult::reply($l->t('Talk-Bot version %s', [$this->appManager->getAppVersion('talkbot')]));
+				return CommandResult::reply($l->t('Talk-Bot version %s', [$this->appManager->getAppVersion('ktec_talkbot')]));
 			case 'ping':
 				return CommandResult::reply($l->t('pong — I am here and listening.'));
 			case 'flip':

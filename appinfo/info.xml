@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
-	<id>talkbot</id>
+	<id>ktec_talkbot</id>
 	<name>Talk-Bot</name>
 
 	<summary>Chat with Claude, Gemini or any OpenAI-compatible model right inside Nextcloud Talk</summary>
@@ -111,7 +111,7 @@ API キーは Nextcloud の設定に暗号化して保存され、ブラウザ�
 Nextcloud Talk アプリが必要です。
 	]]></description>
 
-	<version>2.0.0</version>
+	<version>2.0.1</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>

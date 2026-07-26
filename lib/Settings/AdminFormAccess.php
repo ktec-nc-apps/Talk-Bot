@@ -1,0 +1,159 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * SPDX-FileCopyrightText: 2026 KTEC
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+namespace OCA\TalkBot\Settings;
+
+use OCA\TalkBot\Service\ConfigService;
+use OCP\IL10N;
+use OCP\IUser;
+use OCP\Settings\DeclarativeSettingsTypes;
+use OCP\Settings\IDeclarativeSettingsFormWithHandlers;
+
+/**
+ * Keys, endpoints and access rules.
+ *
+ * The second half of the section (priority 30). It sits after the engine choice
+ * (AdminForm, priority 10) and the model picker (AdminTools, priority 20), so
+ * the model is chosen right under the engine rather than after all of this.
+ */
+class AdminFormAccess implements IDeclarativeSettingsFormWithHandlers {
+
+	public function __construct(
+		private IL10N $l,
+		private ConfigService $config,
+	) {
+	}
+
+	public function getValue(string $fieldId, IUser $user): mixed {
+		return $this->config->getFormValue($fieldId);
+	}
+
+	public function setValue(string $fieldId, mixed $value, IUser $user): void {
+		$this->config->setFormValue($fieldId, $value);
+	}
+
+	public function getSchema(): array {
+		return [
+			'id' => 'ktec_talkbot-access',
+			'priority' => 30,
+			'section_type' => DeclarativeSettingsTypes::SECTION_TYPE_ADMIN,
+			'section_id' => 'ktec_talkbot',
+			'storage_type' => DeclarativeSettingsTypes::STORAGE_TYPE_EXTERNAL,
+			'title' => $this->l->t('Keys and access'),
+			'description' => $this->l->t('The API key for the service you chose above, and who may use the bot.'),
+
+			'fields' => [
+				[
+					'id' => 'claude_api_key',
+					'title' => $this->l->t('Claude API key'),
+					'type' => DeclarativeSettingsTypes::PASSWORD,
+					'default' => '',
+					'sensitive' => true,
+				],
+				[
+					'id' => 'gemini_api_key',
+					'title' => $this->l->t('Gemini API key'),
+					'type' => DeclarativeSettingsTypes::PASSWORD,
+					'default' => '',
+					'sensitive' => true,
+				],
+				[
+					'id' => 'openai_api_key',
+					'title' => $this->l->t('API key for the OpenAI-compatible endpoint'),
+					'type' => DeclarativeSettingsTypes::PASSWORD,
+					'default' => '',
+					'sensitive' => true,
+				],
+				[
+					'id' => 'openai_base_url',
+					'title' => $this->l->t('Base URL of the OpenAI-compatible endpoint'),
+					'description' => $this->l->t('For example https://openrouter.ai/api/v1, https://api.openai.com/v1 or http://localhost:11434/v1'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => 'https://openrouter.ai/api/v1',
+					'default' => 'https://openrouter.ai/api/v1',
+				],
+				[
+					'id' => 'reply_language',
+					'title' => $this->l->t('Reply language'),
+					'description' => $this->l->t('A language code such as en, ja or de to force one language for everyone. Leave empty to answer each user in the language they chose in Nextcloud.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => $this->l->t('empty = each user\'s own language'),
+					'default' => '',
+				],
+				[
+					'id' => 'system_prompt',
+					'title' => $this->l->t('Extra instructions for the assistant'),
+					'description' => $this->l->t('Added to every conversation, for example a tone of voice or facts about your organisation.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'default' => '',
+				],
+				[
+					'id' => 'allowlist_enabled',
+					'title' => $this->l->t('Restrict the bot to selected users'),
+					'description' => $this->l->t('When off, everyone in a conversation the bot was switched on in may use it.'),
+					'type' => DeclarativeSettingsTypes::CHECKBOX,
+					'default' => false,
+				],
+				[
+					'id' => 'allowed_users',
+					'title' => $this->l->t('Allowed users'),
+					'description' => $this->l->t('Comma separated user IDs, used only while the restriction above is on.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => 'alice, bob',
+					'default' => '',
+				],
+				[
+					'id' => 'cli_enabled',
+					'title' => $this->l->t('Allow the command line option'),
+					'description' => $this->l->t('Only turn this on if a Claude or Gemini command line tool is installed on this server and you want to use your subscription instead of an API key. The tool runs as the web server user.'),
+					'type' => DeclarativeSettingsTypes::CHECKBOX,
+					'default' => false,
+				],
+				[
+					'id' => 'claude_cli_path',
+					'title' => $this->l->t('Path to the Claude command line tool'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => '/usr/local/bin/claude',
+					'default' => 'claude',
+				],
+				[
+					'id' => 'gemini_cli_path',
+					'title' => $this->l->t('Path to the Gemini command line tool'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => '/usr/local/bin/gemini',
+					'default' => 'gemini',
+				],
+				[
+					'id' => 'cli_home',
+					'title' => $this->l->t('Home directory for the command line tool'),
+					'description' => $this->l->t('Where the tool keeps its login. Must be readable and writable by the web server user.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => '/var/lib/talkbot',
+					'default' => '',
+				],
+				[
+					'id' => 'cli_user_tools',
+					'title' => $this->l->t('Tools for ordinary users'),
+					'description' => $this->l->t('Empty means no tools at all: the bot can only talk. Otherwise a comma separated list, for example WebSearch. Applies to everyone who is not a Nextcloud administrator.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => $this->l->t('empty = no tools (recommended)'),
+					'default' => '',
+				],
+				[
+					'id' => 'cli_admin_tools',
+					'title' => $this->l->t('Tools for Nextcloud administrators'),
+					'description' => $this->l->t('⚠ Leave empty unless you mean it. Anything you put here — "default" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.'),
+					'type' => DeclarativeSettingsTypes::TEXT,
+					'placeholder' => $this->l->t('empty = administrators get no tools either'),
+					'default' => '',
+				],
+			],
+		];
+	}
+}

@@ -15,7 +15,7 @@ use OCA\TalkBot\Service\TalkService;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/** `occ talkbot:status` — everything you need to answer "why is it not replying?". */
+/** `occ ktec_talkbot:status` — everything you need to answer "why is it not replying?". */
 class Status extends Base {
 
 	public function __construct(
@@ -28,7 +28,7 @@ class Status extends Base {
 	protected function configure(): void {
 		parent::configure();
 		$this
-			->setName('talkbot:status')
+			->setName('ktec_talkbot:status')
 			->setDescription('Show the configured engine and how Talk sees the bot');
 	}
 
@@ -61,7 +61,7 @@ class Status extends Base {
 		if (!$this->talk->isTalkAvailable()) {
 			$data['talk'] = 'Nextcloud Talk is not installed or not enabled';
 		} elseif ($bot === null) {
-			$data['talk'] = 'not registered yet — run occ app:update talkbot or re-enable the app';
+			$data['talk'] = 'not registered yet — run occ app:update ktec_talkbot or re-enable the app';
 		} else {
 			$data['bot_id'] = $bot['id'];
 			$data['bot_state'] = $bot['state'];

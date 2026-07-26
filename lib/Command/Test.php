@@ -16,7 +16,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-/** `occ talkbot:test` — the connection test from the settings page, on the CLI. */
+/** `occ ktec_talkbot:test` — the connection test from the settings page, on the CLI. */
 class Test extends Base {
 
 	public function __construct(
@@ -29,7 +29,7 @@ class Test extends Base {
 	protected function configure(): void {
 		parent::configure();
 		$this
-			->setName('talkbot:test')
+			->setName('ktec_talkbot:test')
 			->setDescription('Ask the configured AI service one question and print what comes back')
 			->addOption(
 				'prompt',

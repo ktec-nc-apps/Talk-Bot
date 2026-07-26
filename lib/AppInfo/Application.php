@@ -11,6 +11,7 @@ namespace OCA\TalkBot\AppInfo;
 
 use OCA\TalkBot\Listener\BotInvokeListener;
 use OCA\TalkBot\Settings\AdminForm;
+use OCA\TalkBot\Settings\AdminFormAccess;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -18,7 +19,7 @@ use OCP\AppFramework\Bootstrap\IRegistrationContext;
 
 class Application extends App implements IBootstrap {
 
-	public const APP_ID = 'talkbot';
+	public const APP_ID = 'ktec_talkbot';
 
 	/** How Talk addresses an in-app bot (see \OCA\Talk\Model\Bot::URL_APP_PREFIX). */
 	public const BOT_URL = 'nextcloudapp://' . self::APP_ID;
@@ -35,6 +36,7 @@ class Application extends App implements IBootstrap {
 			BotInvokeListener::class,
 		);
 		$context->registerDeclarativeSettings(AdminForm::class);
+		$context->registerDeclarativeSettings(AdminFormAccess::class);
 	}
 
 	public function boot(IBootContext $context): void {

@@ -1,8 +1,13 @@
 OC.L10N.register(
-    "talkbot",
+    "ktec_talkbot",
 {
     "Talk-Bot": "Talk-Bot",
     "AI engine and access": "AIエンジンと利用範囲",
+    "AI engine": "AIエンジン",
+    "Keys and access": "APIキーとアクセス",
+    "Choose which AI service answers and how to reach it, then pick a model and run a connection test in the panel just below. Moderators switch the bot on per conversation, under Conversation settings → Bots.": "どのAIサービスが応答し、どう接続するかを選び、すぐ下のパネルでモデルの選択と接続テストを行います。会話ごとの有効化は、モデレーターが「会話の設定 → ボット」で切り替えます。",
+    "The API key for the service you chose above, and who may use the bot.": "上で選んだサービスのAPIキーと、ボットを使えるユーザーの設定です。",
+    "OpenAI-compatible endpoints always use an API key. The command line option needs to be enabled under Keys and access below.": "OpenAI互換のエンドポイントは常にAPIキーを使います。コマンドラインを選ぶ場合は、下の「APIキーとアクセス」で許可してください。",
     "Choose which AI service answers, then pick a model and run a connection test in the panel below. Moderators switch the bot on per conversation, under Conversation settings → Bots.": "どのAIサービスが応答するかを選び、下のパネルでモデルの選択と接続テストを行います。会話ごとの有効化は、モデレーターが「会話の設定 → ボット」で切り替えます。",
     "AI service": "AIサービス",
     "An OpenAI-compatible endpoint covers OpenRouter, DeepSeek, Qwen, Mistral, Groq, OpenAI and local servers such as Ollama.": "OpenAI互換のエンドポイントなら、OpenRouter・DeepSeek・Qwen・Mistral・Groq・OpenAI 本家や、Ollama などのローカルサーバーを利用できます。",

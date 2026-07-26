@@ -16,11 +16,12 @@ use OCP\Settings\DeclarativeSettingsTypes;
 use OCP\Settings\IDeclarativeSettingsFormWithHandlers;
 
 /**
- * The settings Nextcloud renders for us.
+ * The engine choice: which AI service answers and how we reach it.
  *
- * The model is deliberately absent here: it is picked from the list of models
- * the key can actually use, in the panel below this form, so that there is only
- * ever one place to set it.
+ * This is the first thing in the section (priority 10). The model picker and
+ * connection test (AdminTools, priority 20) sit directly beneath it, and the
+ * keys, paths and access rules (AdminFormAccess, priority 30) come after — so
+ * the model is chosen right under the engine, not buried at the bottom.
  */
 class AdminForm implements IDeclarativeSettingsFormWithHandlers {
 
@@ -31,22 +32,59 @@ class AdminForm implements IDeclarativeSettingsFormWithHandlers {
 	}
 
 	public function getValue(string $fieldId, IUser $user): mixed {
-		return $this->config->getFormValue($fieldId);
+		$value = $this->config->getFormValue($fieldId);
+		// NcSelect shows a nice label only when it is handed the whole option
+		// object; a bare stored code ("claude", "cli") is otherwise rendered
+		// verbatim as the selected value. Saving still unwraps it back to the code.
+		if ($fieldId === 'provider') {
+			return $this->optionFor($this->providerOptions(), $value);
+		}
+		if ($fieldId === 'mode') {
+			return $this->optionFor($this->modeOptions(), $value);
+		}
+		return $value;
 	}
 
 	public function setValue(string $fieldId, mixed $value, IUser $user): void {
 		$this->config->setFormValue($fieldId, $value);
 	}
 
+	/** @param list<array{name: string, label: string, value: string}> $options */
+	private function optionFor(array $options, mixed $value): mixed {
+		foreach ($options as $option) {
+			if ($option['value'] === $value) {
+				return $option;
+			}
+		}
+		return $value;
+	}
+
+	/** @return list<array{name: string, label: string, value: string}> */
+	private function providerOptions(): array {
+		return [
+			['name' => 'Claude', 'label' => 'Claude', 'value' => 'claude'],
+			['name' => 'Gemini', 'label' => 'Gemini', 'value' => 'gemini'],
+			['name' => $this->l->t('OpenAI-compatible'), 'label' => $this->l->t('OpenAI-compatible'), 'value' => 'openai'],
+		];
+	}
+
+	/** @return list<array{name: string, label: string, value: string}> */
+	private function modeOptions(): array {
+		return [
+			['name' => $this->l->t('API key'), 'label' => $this->l->t('API key'), 'value' => 'api'],
+			['name' => $this->l->t('Command line tool on this server'), 'label' => $this->l->t('Command line tool on this server'), 'value' => 'cli'],
+		];
+	}
+
 	public function getSchema(): array {
 		return [
-			'id' => 'talkbot-admin',
+			'id' => 'ktec_talkbot-admin',
 			'priority' => 10,
 			'section_type' => DeclarativeSettingsTypes::SECTION_TYPE_ADMIN,
-			'section_id' => 'talkbot',
+			'section_id' => 'ktec_talkbot',
 			'storage_type' => DeclarativeSettingsTypes::STORAGE_TYPE_EXTERNAL,
-			'title' => $this->l->t('AI engine and access'),
-			'description' => $this->l->t('Choose which AI service answers, then pick a model and run a connection test in the panel below. Moderators switch the bot on per conversation, under Conversation settings → Bots.'),
+			'title' => $this->l->t('AI engine'),
+			'description' => $this->l->t('Choose which AI service answers and how to reach it, then pick a model and run a connection test in the panel just below. Moderators switch the bot on per conversation, under Conversation settings → Bots.'),
 
 			'fields' => [
 				[
@@ -57,126 +95,15 @@ class AdminForm implements IDeclarativeSettingsFormWithHandlers {
 					'default' => 'claude',
 					// NcSelect takes the visible text from `label`; options with only a
 					// name render as "undefined".
-					'options' => [
-						['name' => 'Claude', 'label' => 'Claude', 'value' => 'claude'],
-						['name' => 'Gemini', 'label' => 'Gemini', 'value' => 'gemini'],
-						['name' => $this->l->t('OpenAI-compatible'), 'label' => $this->l->t('OpenAI-compatible'), 'value' => 'openai'],
-					],
+					'options' => $this->providerOptions(),
 				],
 				[
 					'id' => 'mode',
 					'title' => $this->l->t('How to reach it'),
-					'description' => $this->l->t('OpenAI-compatible endpoints always use an API key. The command line option needs to be enabled further down.'),
+					'description' => $this->l->t('OpenAI-compatible endpoints always use an API key. The command line option needs to be enabled under Keys and access below.'),
 					'type' => DeclarativeSettingsTypes::SELECT,
 					'default' => 'api',
-					'options' => [
-						['name' => $this->l->t('API key'), 'label' => $this->l->t('API key'), 'value' => 'api'],
-						['name' => $this->l->t('Command line tool on this server'), 'label' => $this->l->t('Command line tool on this server'), 'value' => 'cli'],
-					],
-				],
-				[
-					'id' => 'claude_api_key',
-					'title' => $this->l->t('Claude API key'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'gemini_api_key',
-					'title' => $this->l->t('Gemini API key'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'openai_api_key',
-					'title' => $this->l->t('API key for the OpenAI-compatible endpoint'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'openai_base_url',
-					'title' => $this->l->t('Base URL of the OpenAI-compatible endpoint'),
-					'description' => $this->l->t('For example https://openrouter.ai/api/v1, https://api.openai.com/v1 or http://localhost:11434/v1'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => 'https://openrouter.ai/api/v1',
-					'default' => 'https://openrouter.ai/api/v1',
-				],
-				[
-					'id' => 'reply_language',
-					'title' => $this->l->t('Reply language'),
-					'description' => $this->l->t('A language code such as en, ja or de to force one language for everyone. Leave empty to answer each user in the language they chose in Nextcloud.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = each user\'s own language'),
-					'default' => '',
-				],
-				[
-					'id' => 'system_prompt',
-					'title' => $this->l->t('Extra instructions for the assistant'),
-					'description' => $this->l->t('Added to every conversation, for example a tone of voice or facts about your organisation.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'default' => '',
-				],
-				[
-					'id' => 'allowlist_enabled',
-					'title' => $this->l->t('Restrict the bot to selected users'),
-					'description' => $this->l->t('When off, everyone in a conversation the bot was switched on in may use it.'),
-					'type' => DeclarativeSettingsTypes::CHECKBOX,
-					'default' => false,
-				],
-				[
-					'id' => 'allowed_users',
-					'title' => $this->l->t('Allowed users'),
-					'description' => $this->l->t('Comma separated user IDs, used only while the restriction above is on.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => 'alice, bob',
-					'default' => '',
-				],
-				[
-					'id' => 'cli_enabled',
-					'title' => $this->l->t('Allow the command line option'),
-					'description' => $this->l->t('Only turn this on if a Claude or Gemini command line tool is installed on this server and you want to use your subscription instead of an API key. The tool runs as the web server user.'),
-					'type' => DeclarativeSettingsTypes::CHECKBOX,
-					'default' => false,
-				],
-				[
-					'id' => 'claude_cli_path',
-					'title' => $this->l->t('Path to the Claude command line tool'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/usr/local/bin/claude',
-					'default' => 'claude',
-				],
-				[
-					'id' => 'gemini_cli_path',
-					'title' => $this->l->t('Path to the Gemini command line tool'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/usr/local/bin/gemini',
-					'default' => 'gemini',
-				],
-				[
-					'id' => 'cli_home',
-					'title' => $this->l->t('Home directory for the command line tool'),
-					'description' => $this->l->t('Where the tool keeps its login. Must be readable and writable by the web server user.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/var/lib/talkbot',
-					'default' => '',
-				],
-				[
-					'id' => 'cli_user_tools',
-					'title' => $this->l->t('Tools for ordinary users'),
-					'description' => $this->l->t('Empty means no tools at all: the bot can only talk. Otherwise a comma separated list, for example WebSearch. Applies to everyone who is not a Nextcloud administrator.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = no tools (recommended)'),
-					'default' => '',
-				],
-				[
-					'id' => 'cli_admin_tools',
-					'title' => $this->l->t('Tools for Nextcloud administrators'),
-					'description' => $this->l->t('⚠ Leave empty unless you mean it. Anything you put here — "default" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = administrators get no tools either'),
-					'default' => '',
+					'options' => $this->modeOptions(),
 				],
 			],
 		];

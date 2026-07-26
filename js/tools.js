@@ -8,7 +8,7 @@
 	'use strict';
 
 	var t = function (text) {
-		return (typeof OC !== 'undefined' && OC.L10N) ? OC.L10N.translate('talkbot', text) : text;
+		return (typeof OC !== 'undefined' && OC.L10N) ? OC.L10N.translate('ktec_talkbot', text) : text;
 	};
 
 	var el = function (id) {
@@ -16,7 +16,7 @@
 	};
 
 	function url(path) {
-		return OC.generateUrl('/apps/talkbot' + path);
+		return OC.generateUrl('/apps/ktec_talkbot' + path);
 	}
 
 	function request(method, path, body) {
