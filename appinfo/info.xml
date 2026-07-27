@@ -33,20 +33,31 @@ a message never waits for the model.
   can actually use, so there is nothing to type by hand, and only one place to set
   it. A connection test confirms it answers before your users try it.
 
-### Two tiers: helpers for everyone, maintenance for admins
+### Two tiers: an assistant for everyone, maintenance for admins
 
 - **Ordinary users get a sandbox.** No tools, no files, no shell, no way to touch
   the server — just a helpful assistant that answers questions.
-- **Administrators can get real access, only if you turn it on.** When the CLI
-  engine is used, you may grant the members of the Nextcloud admin group tools
-  that run with the web server's rights, so they can look into and maintain the
-  server straight from a Talk conversation. Everyone who is not an administrator
-  stays in the sandbox. Both tiers are empty by default.
+- **Administrators can get real access, only if you turn it on.** A request is
+  treated as elevated only when three things are all true: the sender is in the
+  Nextcloud **admin group**, the **command line** engine is selected, and the
+  **Tools for Nextcloud administrators** field is set. Because it keys off
+  Nextcloud's own admin group, this follows your existing roles automatically —
+  there is no separate "bot admin" list to maintain.
+
+When elevated, the bot runs the command line tool **with the rights of the web
+server user** (usually `www-data`), so an admin can inspect logs, read and change
+configuration, edit files and run commands, straight from a Talk conversation.
+That is not root, but it is still broad — every member of the admin group shares
+it and it fires from an ordinary chat message, so enable it deliberately. Set
+`default` for all tools, or a short list such as `Bash,Read,Edit`; clear the
+field and admins drop back to the sandbox. The user and admin tiers are two
+separate, independently-set lists, and **both are empty by default**. Anyone can
+send `?whoami` to see their own tier.
 
 ### And the rest
 
 - **Per-conversation memory.** Each user keeps their own history in every room;
-  `?reset` starts over. Commands: `?help`, `?reset`, `?status`.
+  `?reset` starts over. Commands: `?help`, `?reset`, `?status`, `?whoami`.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
 
@@ -90,15 +101,24 @@ App Store から普通のアプリと同じようにインストールする、1
 
 - **一般ユーザーはサンドボックス。** ツールなし・ファイルなし・シェルなし、サーバーに
   触れる手段はありません。質問に答えるだけのアシスタントです。
-- **管理者には、有効化したときだけ本当のアクセスを。** CLIエンジン利用時に限り、
-  Nextcloud の admin グループのメンバーへ、Webサーバー権限で動くツールを与えられます。
-  Talk の会話からそのままサーバーを調べ、メンテナンスできます。管理者以外は常に
-  サンドボックスのままです。どちらの段も既定では空（＝無効）です。
+- **管理者には、有効化したときだけ本当のアクセスを。** リクエストが昇格扱いになるのは、
+  次の3つがすべて満たされたときだけです——送信者が Nextcloud の **admin グループ** に
+  属し、**コマンドライン** エンジンが選ばれ、**Nextcloud管理者向けのツール** の欄が
+  設定されていること。Nextcloud 自身の admin グループを基準にするため、既存の役割に
+  自動で連動し、別途「ボット管理者」の一覧を管理する必要はありません。
+
+昇格時、ボットは **Webサーバーのユーザー権限**（通常は `www-data`）でコマンドライン
+ツールを動かすため、管理者はログの確認・設定の参照と変更・ファイルの編集・コマンドの
+実行を、Talk の会話からそのまま行えます。root ではありませんが強力で、admin グループの
+全員が共有し、普通のチャットメッセージで発動するので、有効化は慎重に。全ツールなら
+`default`、あるいは `Bash,Read,Edit` のような短い一覧を指定し、欄を空にすれば管理者も
+サンドボックスに戻ります。一般ユーザー用と管理者用は別々に指定する2つの一覧で、
+**どちらも既定では空**です。誰でも `?whoami` で自分の段を確認できます。
 
 ### その他
 
 - **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`?reset` で
-  やり直せます。コマンド： `?help`、`?reset`、`?status`。
+  やり直せます。コマンド： `?help`、`?reset`、`?status`、`?whoami`。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 
@@ -111,7 +131,7 @@ API キーは Nextcloud の設定に暗号化して保存され、ブラウザ�
 Nextcloud Talk アプリが必要です。
 	]]></description>
 
-	<version>2.0.1</version>
+	<version>2.0.2</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>
