@@ -88,14 +88,58 @@ the answer through Talk's bot API when the model is done. If the server cannot
 reach itself over HTTP, the work falls back to a background job instead, and the
 answer arrives with the next cron run.
 
-### Letting admins maintain the server (optional)
+### Administrator privileges, in detail
 
-Off unless you ask for it. With the command line engine selected, set **Tools for
-Nextcloud administrators** in the settings — `default` for all tools, or a list
-such as `Bash,Read,Edit`. From then on, a member of the admin group can ask the
-bot to look into logs, check a config value or fix something, straight from a Talk
-conversation; it runs with the web server's rights. Non-admins are unaffected and
-stay in the sandbox. Leave the field empty and nobody gets tools.
+By default the bot only talks. The ability to touch the server — read files, run
+shell commands, edit configuration — is an opt-in feature of the **command line
+engine**, and it is split into two independent tiers that are decided from each
+sender's Nextcloud account.
+
+**Who counts as an administrator.** A request is treated as *elevated* only when
+all three of these are true:
+
+1. the sender is a member of the Nextcloud **admin group**,
+2. the **command line** engine is the selected way to reach the model, and
+3. the **Tools for Nextcloud administrators** field is not empty.
+
+Because the first condition is Nextcloud's own admin group, administrator power
+follows your existing roles automatically: promote or demote someone in Nextcloud
+and their bot access changes with them. There is no separate "bot admin" list to
+keep in sync.
+
+**What each tier can do.**
+
+- **Ordinary users — sandboxed.** No tools whatsoever. The bot answers questions
+  and nothing more: it cannot open a file, run a command, or reach anything on the
+  server.
+- **Administrators — elevated (only when enabled).** The bot runs the command line
+  tool with the tools you granted, **with the rights of the web server user**
+  (usually `www-data`). Within that user's reach it can inspect logs, read and
+  change configuration, edit files and run commands — all from a Talk message.
+
+**The two settings, set independently.**
+
+- **Tools for ordinary users** (`cli_user_tools`) — empty by default, and best
+  left that way. If you do fill it, keep it to a safe, read-only kind of list such
+  as `WebSearch`.
+- **Tools for Nextcloud administrators** (`cli_admin_tools`) — empty by default.
+  `default` grants every available tool; or name exactly the tools you want, for
+  example `Bash,Read,Edit`.
+
+**Understand the reach before you enable it.** An elevated request is as capable
+as a shell running as the web server user. That is not root, but on a typical
+install it is still full control over Nextcloud's own files and data. Every member
+of the admin group gets this, and it is triggered by an ordinary chat message — so
+enable it deliberately: leave the field empty unless you truly want it, and prefer
+a short explicit list over `default` when a few tools are enough.
+
+**Checking and revoking.**
+
+- Anyone can send **`?whoami`** to see which tier they are in.
+- **`?status`** — or `occ ktec_talkbot:status` on the server — shows both tool
+  lists and the current engine.
+- To switch it off again, clear the **Tools for Nextcloud administrators** field;
+  administrators drop straight back to the sandbox.
 
 ### Privacy and security
 
@@ -115,6 +159,7 @@ stay in the sandbox. Leave the field empty and nobody gets tools.
 | `?help` | Show the command list |
 | `?reset` | Forget this conversation and start over |
 | `?status` | Show the engine, model and how much is remembered |
+| `?whoami` | Show your access level — sandboxed, or which admin tools you have |
 
 ---
 
@@ -181,13 +226,54 @@ Talk はアプリ内ボットを「送信者のメッセージを投稿してい
 ボットAPI経由で返答を投稿します。サーバーが自分自身にHTTPで到達できない場合は、
 バックグラウンドジョブに退避し、次のcron実行で返答が届きます。
 
-### 管理者によるサーバーメンテナンス（任意）
+### 管理者権限の詳細
 
-指定しない限り無効です。CLIエンジンを選んだうえで、設定の **Nextcloud管理者向けの
-ツール** に値を入れます（全ツールなら `default`、あるいは `Bash,Read,Edit` のような
-一覧）。以降、admin グループのメンバーは、ログの確認・設定値の参照・修正などを、Talk の
-会話からそのままボットに頼めます（Webサーバー権限で動作）。管理者以外は影響を受けず、
-サンドボックスのままです。空欄なら、誰にもツールは与えられません。
+既定では、ボットは会話するだけです。サーバーに触れる力——ファイルの読み取り、シェル
+コマンドの実行、設定の変更——は **CLIエンジン** の任意機能で、送信者の Nextcloud
+アカウントから判定される、独立した二段構えになっています。
+
+**誰が「管理者」として扱われるか。** リクエストが *昇格* 扱いになるのは、次の3つが
+すべて満たされたときだけです。
+
+1. 送信者が Nextcloud の **admin グループ** のメンバーであること、
+2. モデルへの接続方法として **コマンドライン** エンジンが選ばれていること、
+3. **Nextcloud管理者向けのツール** の欄が空でないこと。
+
+1つ目の条件が Nextcloud 自身の admin グループなので、管理者権限は既存の役割に自動で
+連動します。Nextcloud 側で管理者に昇格・降格すれば、ボットのアクセスもそれに従います。
+別途「ボット管理者」の一覧を管理する必要はありません。
+
+**各段でできること。**
+
+- **一般ユーザー — サンドボックス。** ツールは一切ありません。質問に答えるだけで、
+  ファイルを開くことも、コマンドを実行することも、サーバー上の何かに到達することも
+  できません。
+- **管理者 — 昇格（有効化したときのみ）。** ボットは、あなたが与えたツールとともに、
+  **Webサーバーのユーザー権限**（通常は `www-data`）でコマンドラインツールを動かします。
+  そのユーザーの権限が届く範囲で、ログの確認・設定の参照と変更・ファイルの編集・
+  コマンドの実行を、Talk のメッセージから行えます。
+
+**2つの設定は別々に指定します。**
+
+- **一般ユーザー向けのツール**（`cli_user_tools`）— 既定は空で、そのままを推奨します。
+  入れる場合も、`WebSearch` のような安全で読み取り中心の一覧にとどめてください。
+- **Nextcloud管理者向けのツール**（`cli_admin_tools`）— 既定は空。`default` で全ツールを
+  付与、あるいは `Bash,Read,Edit` のように必要なツールだけを指定します。
+
+**有効化する前に、及ぶ範囲を理解してください。** 昇格したリクエストは、Webサーバーの
+ユーザーとして動くシェルと同等の力を持ちます。root ではありませんが、一般的な構成では
+Nextcloud 自身のファイルとデータを完全に操作できます。これを admin グループの全員が得て、
+しかも普通のチャットメッセージで発動します。ですから有効化は慎重に——本当に必要でない
+限り欄は空のままにし、少数のツールで足りるなら `default` ではなく明示的な短い一覧を
+選んでください。
+
+**確認と解除。**
+
+- 誰でも **`?whoami`** を送れば、自分がどちらの段かを確認できます。
+- **`?status`**（サーバー上では `occ ktec_talkbot:status`）で、両方のツール一覧と現在の
+  エンジンが分かります。
+- 無効に戻すには、**Nextcloud管理者向けのツール** の欄を空にします。管理者はただちに
+  サンドボックスへ戻ります。
 
 ### プライバシーとセキュリティ
 
@@ -206,6 +292,7 @@ Talk はアプリ内ボットを「送信者のメッセージを投稿してい
 | `?help` | コマンド一覧を表示します |
 | `?reset` | この会話を忘れて最初からやり直します |
 | `?status` | エンジン・モデル・記憶量を表示します |
+| `?whoami` | 自分の権限レベル（サンドボックス／付与された管理者ツール）を表示します |
 
 ---
 
