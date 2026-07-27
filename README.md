@@ -113,9 +113,10 @@ keep in sync.
   and nothing more: it cannot open a file, run a command, or reach anything on the
   server.
 - **Administrators — elevated (only when enabled).** The bot runs the command line
-  tool with the tools you granted, **with the rights of the web server user**
-  (usually `www-data`). Within that user's reach it can inspect logs, read and
-  change configuration, edit files and run commands — all from a Talk message.
+  tool with the tools you granted, **with the rights of the account Nextcloud runs
+  as** — its web server / PHP process user, whose name varies by system. Within
+  that account's reach it can inspect logs, read and change configuration, edit
+  files and run commands — all from a Talk message.
 
 **The two settings, set independently.**
 
@@ -127,7 +128,7 @@ keep in sync.
   example `Bash,Read,Edit`.
 
 **Understand the reach before you enable it.** An elevated request is as capable
-as a shell running as the web server user. That is not root, but on a typical
+as a shell running as the account Nextcloud runs as. That is not root, but on a typical
 install it is still full control over Nextcloud's own files and data. Every member
 of the admin group gets this, and it is triggered by an ordinary chat message — so
 enable it deliberately: leave the field empty unless you truly want it, and prefer
@@ -249,8 +250,9 @@ Talk はアプリ内ボットを「送信者のメッセージを投稿してい
   ファイルを開くことも、コマンドを実行することも、サーバー上の何かに到達することも
   できません。
 - **管理者 — 昇格（有効化したときのみ）。** ボットは、あなたが与えたツールとともに、
-  **Webサーバーのユーザー権限**（通常は `www-data`）でコマンドラインツールを動かします。
-  そのユーザーの権限が届く範囲で、ログの確認・設定の参照と変更・ファイルの編集・
+  **Nextcloud を実行しているアカウント**（Web サーバー／PHP プロセスの実行ユーザー。
+  名称はシステムにより異なります）の権限でコマンドラインツールを動かします。その
+  アカウントの権限が届く範囲で、ログの確認・設定の参照と変更・ファイルの編集・
   コマンドの実行を、Talk のメッセージから行えます。
 
 **2つの設定は別々に指定します。**
@@ -260,8 +262,8 @@ Talk はアプリ内ボットを「送信者のメッセージを投稿してい
 - **Nextcloud管理者向けのツール**（`cli_admin_tools`）— 既定は空。`default` で全ツールを
   付与、あるいは `Bash,Read,Edit` のように必要なツールだけを指定します。
 
-**有効化する前に、及ぶ範囲を理解してください。** 昇格したリクエストは、Webサーバーの
-ユーザーとして動くシェルと同等の力を持ちます。root ではありませんが、一般的な構成では
+**有効化する前に、及ぶ範囲を理解してください。** 昇格したリクエストは、Nextcloud を
+実行しているアカウントとして動くシェルと同等の力を持ちます。root ではありませんが、一般的な構成では
 Nextcloud 自身のファイルとデータを完全に操作できます。これを admin グループの全員が得て、
 しかも普通のチャットメッセージで発動します。ですから有効化は慎重に——本当に必要でない
 限り欄は空のままにし、少数のツールで足りるなら `default` ではなく明示的な短い一覧を

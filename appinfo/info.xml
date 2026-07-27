@@ -44,9 +44,10 @@ a message never waits for the model.
   Nextcloud's own admin group, this follows your existing roles automatically —
   there is no separate "bot admin" list to maintain.
 
-When elevated, the bot runs the command line tool **with the rights of the web
-server user** (usually `www-data`), so an admin can inspect logs, read and change
-configuration, edit files and run commands, straight from a Talk conversation.
+When elevated, the bot runs the command line tool **with the rights of the account
+Nextcloud runs as** (its web server / PHP process user, whose name varies by
+system), so an admin can inspect logs, read and change configuration, edit files
+and run commands, straight from a Talk conversation.
 That is not root, but it is still broad — every member of the admin group shares
 it and it fires from an ordinary chat message, so enable it deliberately. Set
 `default` for all tools, or a short list such as `Bash,Read,Edit`; clear the
@@ -107,9 +108,10 @@ App Store から普通のアプリと同じようにインストールする、1
   設定されていること。Nextcloud 自身の admin グループを基準にするため、既存の役割に
   自動で連動し、別途「ボット管理者」の一覧を管理する必要はありません。
 
-昇格時、ボットは **Webサーバーのユーザー権限**（通常は `www-data`）でコマンドライン
-ツールを動かすため、管理者はログの確認・設定の参照と変更・ファイルの編集・コマンドの
-実行を、Talk の会話からそのまま行えます。root ではありませんが強力で、admin グループの
+昇格時、ボットは **Nextcloud を実行しているアカウント**（Web サーバー／PHP プロセスの
+実行ユーザー。名称はシステムにより異なります）の権限でコマンドラインツールを動かすため、
+管理者はログの確認・設定の参照と変更・ファイルの編集・コマンドの実行を、Talk の会話から
+そのまま行えます。root ではありませんが強力で、admin グループの
 全員が共有し、普通のチャットメッセージで発動するので、有効化は慎重に。全ツールなら
 `default`、あるいは `Bash,Read,Edit` のような短い一覧を指定し、欄を空にすれば管理者も
 サンドボックスに戻ります。一般ユーザー用と管理者用は別々に指定する2つの一覧で、
@@ -131,7 +133,7 @@ API キーは Nextcloud の設定に暗号化して保存され、ブラウザ�
 Nextcloud Talk アプリが必要です。
 	]]></description>
 
-	<version>2.0.2</version>
+	<version>2.0.3</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>
