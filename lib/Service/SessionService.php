@@ -67,10 +67,54 @@ class SessionService {
 
 	/** Append one exchange, keeping only the most recent turns. */
 	public function appendTurn(string $token, string $userId, string $question, string $answer): void {
-		$history = $this->getHistory($token, $userId);
-		$history[] = ['role' => 'user', 'text' => $question];
-		$history[] = ['role' => 'assistant', 'text' => $answer];
-		$this->store($token, $userId, $this->trim($history));
+		// Two answers finishing together must not each write back the history they read,
+		// or one exchange is lost (review T15).
+		$this->locked($token, $userId, function () use ($token, $userId, $question, $answer): void {
+			$history = $this->getHistory($token, $userId);
+			$history[] = ['role' => 'user', 'text' => $question];
+			$history[] = ['role' => 'assistant', 'text' => $answer];
+			$this->store($token, $userId, $this->trim($history));
+		});
+	}
+
+	/** Run $fn while holding this conversation's history lock (waits up to 10 seconds). */
+	private function locked(string $token, string $userId, callable $fn): void {
+		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+		if (!$cache instanceof \OCP\IMemcache) {
+			$fn();
+			return;
+		}
+		$key = 'histlock_' . hash('sha256', $token . "\0" . $userId);
+		$until = microtime(true) + 10;
+		while (!$cache->add($key, 1, 30)) {
+			if (microtime(true) > $until) {
+				break; // a crashed holder: its lock expires in 30 s, better to write than to lose it
+			}
+			usleep(50000);
+		}
+		try {
+			$fn();
+		} finally {
+			$cache->remove($key);
+		}
+	}
+
+	/** Forget everything remembered for a user (their account was deleted). */
+	public function deleteForUser(string $userId): void {
+		$q = $this->db->getQueryBuilder();
+		$q->delete(self::TABLE)->where($q->expr()->eq('user_id', $q->createNamedParameter($userId)))->executeStatement();
+	}
+
+	/** Forget everything remembered in a conversation (it was deleted). */
+	public function deleteForRoom(string $token): void {
+		$q = $this->db->getQueryBuilder();
+		$q->delete(self::TABLE)->where($q->expr()->eq('token', $q->createNamedParameter($token)))->executeStatement();
+	}
+
+	/** Forget conversations nobody has written in since $before (a unix time). @return int rows removed */
+	public function deleteOlderThan(int $before): int {
+		$q = $this->db->getQueryBuilder();
+		return $q->delete(self::TABLE)->where($q->expr()->lt('updated_at', $q->createNamedParameter($before, IQueryBuilder::PARAM_INT)))->executeStatement();
 	}
 
 	/**

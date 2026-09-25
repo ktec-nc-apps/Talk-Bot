@@ -31,11 +31,21 @@ class ReplyJob extends QueuedJob {
 		if (!is_array($argument)) {
 			return;
 		}
+		$text = (string)($argument['text'] ?? '');
+		$ref = (string)($argument['ref'] ?? '');
+		if ($ref !== '' && preg_match('/^[A-Za-z0-9]+$/', $ref)) {
+			$cfg = \OCP\Server::get(\OCP\IConfig::class);
+			$text = $cfg->getAppValue('ktec_talkbot', 'pending_' . $ref, '');
+			$cfg->deleteAppValue('ktec_talkbot', 'pending_' . $ref);
+		}
+		if ($text === '') {
+			return;
+		}
 		$this->replyService->process(
 			(string)($argument['token'] ?? ''),
 			(string)($argument['userId'] ?? ''),
 			(int)($argument['messageId'] ?? 0),
-			(string)($argument['text'] ?? ''),
+			$text,
 		);
 	}
 }

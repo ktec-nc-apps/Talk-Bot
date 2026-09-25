@@ -40,11 +40,22 @@ class ReplyService {
 		private IFactory $l10nFactory,
 		private IUserManager $userManager,
 		private IGroupManager $groupManager,
+		private TalkService $talk,
 		private LoggerInterface $logger,
 	) {
 	}
 
 	public function process(string $token, string $userId, int $messageId, string $text): void {
+		// One answer per message: the HTTP hand-off and the background job can both reach
+		// here for the same message (review T4).
+		if ($messageId > 0) {
+			$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+			$key = 'answered_' . $token . '_' . $messageId;
+			if ($cache->get($key) !== null) {
+				return;
+			}
+			$cache->set($key, 1, 3600);
+		}
 		if (!$this->isAllowed($userId)) {
 			$this->logger->debug('Talk-Bot: ignoring message from user outside the allow list', ['user' => $userId]);
 			return;
@@ -68,9 +79,15 @@ class ReplyService {
 			$persist = $command->persist;
 		}
 
+		// Limits the administrator set (review T9): each answer holds a PHP worker and costs money.
+		$slot = $this->takeSlot($userId);
+		if ($slot === null) {
+			$this->botApi->sendMessage($token, '⏳ ' . $l->t('Too many requests at once. Please wait a moment and ask again.'), $messageId);
+			return;
+		}
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);
 		try {
-			$elevated = $this->isElevated($userId);
+			$elevated = $this->isElevated($userId, $token);
 			$engine = $this->engineFactory->get();
 			$history = $this->sessions->getHistory($token, $userId);
 			// The directive rides along with this turn's message — the strongest
@@ -94,7 +111,7 @@ class ReplyService {
 			}
 
 			if ($result->kind === TurnResult::KIND_AUTH_ERROR) {
-				$this->logger->error('Talk-Bot: the AI engine rejected our credentials: ' . $result->detail);
+				$this->logger->error('Talk-Bot: the AI engine rejected our credentials: ' . Redact::text($result->detail, Redact::keysOf($this->config)));
 				$this->botApi->sendMessage(
 					$token,
 					'⚠️ ' . $l->t('The AI service did not accept the credentials. An administrator needs to check the Talk-Bot settings.'),
@@ -103,18 +120,80 @@ class ReplyService {
 				return;
 			}
 
-			$this->logger->error('Talk-Bot: engine error: ' . $result->detail);
+			// The room -- guests included -- gets a plain sentence; what went wrong goes to
+			// the log, with every secret taken out (review T1, T12).
+			$this->logger->error('Talk-Bot: engine error: ' . Redact::text($result->detail, Redact::keysOf($this->config)));
 			$this->botApi->sendMessage(
 				$token,
-				'⚠️ ' . $l->t('Something went wrong: %s', [$this->truncate($result->detail, 500)]),
+				'⚠️ ' . $l->t('Something went wrong. An administrator can find the details in the Nextcloud log.'),
 				$messageId,
 			);
 		} catch (\Throwable $e) {
-			$this->logger->error('Talk-Bot: unhandled error while answering: ' . $e->getMessage(), ['exception' => $e]);
+			$this->logger->error('Talk-Bot: unhandled error while answering: ' . Redact::text($e->getMessage(), Redact::keysOf($this->config)));
 			$this->botApi->sendMessage($token, '⚠️ ' . $l->t('Something went wrong while answering.'), $messageId);
 		} finally {
+			$this->releaseSlot($slot);
 			if ($reacted) {
 				$this->botApi->removeReaction($token, $messageId, self::THINKING);
+			}
+		}
+	}
+
+	/**
+	 * Count this answer against the limits: per user per minute, running per user and running
+	 * in total (0 = no limit). Returns the counters to release afterwards, or null when a limit
+	 * is reached. Without a shared cache that can count, nothing is limited.
+	 *
+	 * @return list<string>|null
+	 */
+	private function takeSlot(string $userId): ?array {
+		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+		if (!$cache instanceof \OCP\IMemcache) {
+			return [];
+		}
+		$perMinute = $this->config->getRatePerMinute();
+		if ($perMinute > 0) {
+			$key = 'rate_' . $userId . '_' . intdiv(time(), 60);
+			$n = $cache->inc($key);
+			if ($n === 1) {
+				$cache->set($key, 1, 120);
+			}
+			if ($n !== false && $n > $perMinute) {
+				return null;
+			}
+		}
+		// A crashed answer must not hold its place forever: the counters expire after the longest wait.
+		$ttl = $this->config->getRequestTimeout() + 120;
+		$taken = [];
+		foreach (['run_user_' . $userId => $this->config->getMaxParallelPerUser(), 'run_total' => $this->config->getMaxParallelTotal()] as $key => $max) {
+			if ($max === 0) {
+				continue;
+			}
+			$n = $cache->inc($key);
+			if ($n === false) {
+				continue;
+			}
+			if ($n === 1) {
+				$cache->set($key, 1, $ttl);
+			}
+			$taken[] = $key;
+			if ($n > $max) {
+				$this->releaseSlot($taken);
+				return null;
+			}
+		}
+		return $taken;
+	}
+
+	/** @param list<string> $keys */
+	private function releaseSlot(array $keys): void {
+		if ($keys === []) {
+			return;
+		}
+		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+		foreach ($keys as $key) {
+			if ($cache instanceof \OCP\IMemcache && $cache->dec($key) === false) {
+				$cache->remove($key);
 			}
 		}
 	}
@@ -147,15 +226,19 @@ class ReplyService {
 	/**
 	 * Whether this message may use the tools of the command line tool.
 	 *
-	 * Two things have to be true: the administrator switched the admin tier on at
-	 * all, and the person who wrote the message is in the admin group. Everyone
-	 * else gets the sandboxed prompt and, in the engine, the user tool list.
+	 * Three things have to be true: the administrator switched the admin tier on at
+	 * all, the person who wrote the message is in the admin group, and nobody else is
+	 * in the conversation. Everyone else gets the sandboxed prompt and, in the engine,
+	 * the user tool list.
 	 */
-	private function isElevated(string $userId): bool {
+	private function isElevated(string $userId, string $token): bool {
 		if (!$this->config->areAdminToolsEnabled() || $this->config->getMode() !== 'cli') {
 			return false;
 		}
-		return $this->groupManager->isAdmin($userId);
+		// Only where nobody else reads the answer (review T7): the administrator's one-to-one
+		// conversation with the bot's account, or a conversation they are alone in.
+		return $this->groupManager->isAdmin($userId)
+			&& $this->talk->isPrivateTo($token, $userId, $this->config->getBotAccount());
 	}
 
 	/** English name of a language code, or the code itself when unknown. */

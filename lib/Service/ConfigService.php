@@ -45,6 +45,11 @@ class ConfigService {
 		'cli_home' => ['cli_home', 'string', ''],
 		'cli_user_tools' => ['cli_user_tools', 'string', ''],
 		'cli_admin_tools' => ['cli_admin_tools', 'string', ''],
+		'bot_account' => ['bot_account', 'string', ''],
+		'history_days' => ['history_days', 'int', 0],
+		'rate_per_minute' => ['rate_per_minute', 'int', 10],
+		'max_parallel_user' => ['max_parallel_user', 'int', 2],
+		'max_parallel_total' => ['max_parallel_total', 'int', 4],
 	];
 
 	/** Model ids are chosen in the tools panel, never typed into the form. */
@@ -97,6 +102,9 @@ class ConfigService {
 		if ($kind === 'bool') {
 			return $this->getBool($key, (bool)$default);
 		}
+		if ($kind === 'int') {
+			return $this->getInt($key, (int)$default);
+		}
 		if ($kind === 'secret') {
 			// Never hand a stored key back to the browser; report only whether one is set.
 			return $this->getString($key) === '' ? '' : self::SECRET_PLACEHOLDER;
@@ -117,6 +125,13 @@ class ConfigService {
 
 		if ($kind === 'bool') {
 			$this->appConfig->setValueBool(Application::APP_ID, $key, (bool)$value);
+			return;
+		}
+		if ($kind === 'int') {
+			// 0 means no limit; anything that is not a whole number leaves the value alone
+			if (is_numeric($value) && (int)$value >= 0) {
+				$this->appConfig->setValueInt(Application::APP_ID, $key, min(100000, (int)$value));
+			}
 			return;
 		}
 		$string = is_scalar($value) ? trim((string)$value) : '';
@@ -218,6 +233,34 @@ class ConfigService {
 		return $this->getAdminTools() !== '';
 	}
 
+	/**
+	 * The Talk account people open a one-to-one conversation with to reach the bot.
+	 * Administrator tools only work in such a conversation (or one the administrator is
+	 * alone in), so nobody else can read what they return.
+	 */
+	public function getBotAccount(): string {
+		return $this->getString('bot_account');
+	}
+
+	// -- limits (0 = no limit) ----------------------------------------------
+
+	/** Days a conversation's history is kept after its last message; 0 = kept until reset. */
+	public function getHistoryDays(): int {
+		return max(0, $this->getInt('history_days', 0));
+	}
+
+	public function getRatePerMinute(): int {
+		return max(0, $this->getInt('rate_per_minute', 10));
+	}
+
+	public function getMaxParallelPerUser(): int {
+		return max(0, $this->getInt('max_parallel_user', 2));
+	}
+
+	public function getMaxParallelTotal(): int {
+		return max(0, $this->getInt('max_parallel_total', 4));
+	}
+
 	// -- behaviour -----------------------------------------------------------
 
 	public function getReplyLanguage(): string {
@@ -226,7 +269,7 @@ class ConfigService {
 
 	/** Per-conversation reply-language override, set with the ?lang command. */
 	public function getRoomLanguage(string $token): string {
-		return $this->getString('roomlang.' . $token);
+		return $this->appConfig->getValueString(Application::APP_ID, 'roomlang.' . $token, '', true);
 	}
 
 	public function setRoomLanguage(string $token, string $code): void {
@@ -234,7 +277,8 @@ class ConfigService {
 			$this->appConfig->deleteKey(Application::APP_ID, 'roomlang.' . $token);
 			return;
 		}
-		$this->setString('roomlang.' . $token, $code);
+		// lazy: read only when a message arrives, not on every Nextcloud request (review T14)
+		$this->appConfig->setValueString(Application::APP_ID, 'roomlang.' . $token, $code, true);
 	}
 
 	public function getExtraSystemPrompt(): string {

@@ -48,6 +48,7 @@ class CommandService {
 		private IGroupManager $groupManager,
 		private IAppManager $appManager,
 		private ISecureRandom $random,
+		private TalkService $talk,
 	) {
 	}
 
@@ -92,6 +93,10 @@ class CommandService {
 			case '8ball':
 				return CommandResult::reply('🎱 ' . $l->t($this->pick(self::EIGHT_BALL)));
 			case 'lang':
+				// Changing it affects everybody in the conversation, so only moderators may (review T14).
+				if (trim($args) !== '' && !$this->talk->isModerator($token, $userId)) {
+					return CommandResult::reply($l->t('Only a moderator of this conversation can change its reply language.'));
+				}
 				return CommandResult::reply($this->lang($token, $args, $l));
 			case 'undo':
 				$dropped = $this->sessions->dropLastExchange($token, $userId);
@@ -107,7 +112,7 @@ class CommandService {
 			case 'summary':
 			case 'tldr':
 				if ($this->sessions->countTurns($token, $userId) === 0) {
-					return CommandResult::reply($l->t('There is no conversation to summarise yet.'));
+					return CommandResult::reply($l->t('There is no conversation to summarize yet.'));
 				}
 				return CommandResult::prompt(
 					'Summarise our conversation so far in a few short bullet points.',
@@ -156,8 +161,8 @@ class CommandService {
 			'- `?reset` — ' . $l->t('forget the conversation and start over'),
 			'- `?undo` — ' . $l->t('remove the last exchange'),
 			'- `?retry` — ' . $l->t('answer the last question again'),
-			'- `?summary` — ' . $l->t('summarise the conversation so far'),
-			'- `?lang <code>` — ' . $l->t('set the reply language for this conversation (e.g. ?lang en; ?lang off to follow you)'),
+			'- `?summary` — ' . $l->t('summarize the conversation so far'),
+			'- `?lang <code>` — ' . $l->t('set the reply language for this conversation (e.g. ?lang en; ?lang off to follow each user\'s language)'),
 			'*' . $l->t('Info') . '*',
 			'- `?help` — ' . $l->t('show this help'),
 			'- `?status` — ' . $l->t('show the engine, model and memory'),

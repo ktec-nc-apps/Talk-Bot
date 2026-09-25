@@ -63,6 +63,16 @@ class ProcessController extends Controller {
 			return new JSONResponse(['status' => 'stale'], Http::STATUS_BAD_REQUEST);
 		}
 
+		// Each signed request is answered once: a copy sent again inside the time window is
+		// refused (review T10). Without a shared cache that can do this, the window alone applies.
+		$nonce = (string)($payload['nonce'] ?? '');
+		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+		if ($cache instanceof \OCP\IMemcache) {
+			if ($nonce === '' || !$cache->add('nonce_' . hash('sha256', $nonce), 1, 2 * AsyncService::MAX_AGE)) {
+				return new JSONResponse(['status' => 'replayed'], Http::STATUS_CONFLICT);
+			}
+		}
+
 		// The caller stops waiting after a couple of seconds; keep going anyway.
 		ignore_user_abort(true);
 		@set_time_limit(0);

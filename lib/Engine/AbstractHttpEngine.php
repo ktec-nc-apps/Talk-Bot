@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace OCA\TalkBot\Engine;
 
+use OCA\TalkBot\Service\Redact;
+
 use OCA\TalkBot\Service\ConfigService;
 use OCP\Http\Client\IClientService;
 use Psr\Log\LoggerInterface;
@@ -68,7 +70,7 @@ abstract class AbstractHttpEngine implements IEngine {
 				$previous = $previous->getPrevious();
 			}
 			if ($status === 0) {
-				return ['status' => 0, 'body' => [], 'error' => $e->getMessage()];
+				return ['status' => 0, 'body' => [], 'error' => $this->scrub($e->getMessage())];
 			}
 		}
 
@@ -81,16 +83,21 @@ abstract class AbstractHttpEngine implements IEngine {
 	}
 
 	/** Pull a human readable message out of a provider error body. */
+	/** An error text with every secret taken out (review T1). */
+	protected function scrub(string $text): string {
+		return Redact::text($text, Redact::keysOf($this->config));
+	}
+
 	protected function errorMessage(array $result): string {
 		if ($result['error'] !== '') {
-			return $result['error'];
+			return $this->scrub($result['error']);
 		}
 		$error = $result['body']['error'] ?? null;
 		if (is_array($error) && isset($error['message']) && is_string($error['message'])) {
-			return $error['message'];
+			return $this->scrub($error['message']);
 		}
 		if (is_string($error) && $error !== '') {
-			return $error;
+			return $this->scrub($error);
 		}
 		return 'HTTP ' . $result['status'];
 	}

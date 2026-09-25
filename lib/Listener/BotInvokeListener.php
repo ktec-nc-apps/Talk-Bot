@@ -64,7 +64,14 @@ class BotInvokeListener implements IEventListener {
 			return;
 		}
 
-		$this->async->dispatch($token, $userId, (int)($object['id'] ?? 0), $text);
+		// Nothing may escape into Talk's own sending of the message: an exception here
+		// used to reach ChatManager::sendMessage, the sender got a 500 for a message that
+		// had been saved, and a retry posted it twice (review T5).
+		try {
+			$this->async->dispatch($token, $userId, (int)($object['id'] ?? 0), $text);
+		} catch (\Throwable $e) {
+			\OCP\Server::get(\Psr\Log\LoggerInterface::class)->error('Talk-Bot: could not hand the message on: ' . $e->getMessage());
+		}
 	}
 
 	/** The content field carries a JSON document with the text and its mentions. */

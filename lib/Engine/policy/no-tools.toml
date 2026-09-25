@@ -1,0 +1,7 @@
+# Talk-Bot: an ordinary user's message runs Gemini CLI with no tools at all.
+# Passed with --admin-policy, which outranks the bundled read-only rules that
+# would otherwise let read_file, glob and grep_search run unasked (review T2).
+[[rule]]
+toolName = "*"
+decision = "deny"
+priority = 999

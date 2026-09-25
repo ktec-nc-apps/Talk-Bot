@@ -23,6 +23,10 @@ use Psr\Log\LoggerInterface;
  */
 class TalkService {
 
+	/** Talk room types (Talk's Room::TYPE_*). */
+	private const ROOM_ONE_TO_ONE = 1;
+	private const ROOM_NOTE_TO_SELF = 6;
+
 	private const STATES = [
 		0 => 'disabled',
 		1 => 'enabled',
@@ -115,6 +119,63 @@ class TalkService {
 		} catch (\Throwable $e) {
 			$this->logger->warning('Talk-Bot: could not read the conversation list from Talk: ' . $e->getMessage());
 			return [];
+		}
+	}
+
+	/**
+	 * Whether nobody but $userId (and the bot's own account, if one is set) can read
+	 * this conversation: a one-to-one or note-to-self room, never a group or public one.
+	 */
+	public function isPrivateTo(string $token, string $userId, string $botAccount): bool {
+		if (!$this->isTalkAvailable() || $token === '' || $userId === '') {
+			return false;
+		}
+		try {
+			$q = $this->db->getQueryBuilder();
+			$q->select('id', 'type')->from('talk_rooms')->where($q->expr()->eq('token', $q->createNamedParameter($token)));
+			$room = $q->executeQuery()->fetch();
+			if (!$room || !in_array((int)$room['type'], [self::ROOM_ONE_TO_ONE, self::ROOM_NOTE_TO_SELF], true)) {
+				return false;
+			}
+			$q = $this->db->getQueryBuilder();
+			$q->select('actor_type', 'actor_id')->from('talk_attendees')->where($q->expr()->eq('room_id', $q->createNamedParameter((int)$room['id'])));
+			$result = $q->executeQuery();
+			$me = false;
+			$others = true;
+			while ($row = $result->fetch()) {
+				$isUser = $row['actor_type'] === 'users';
+				if ($isUser && $row['actor_id'] === $userId) {
+					$me = true;
+				} elseif (!($isUser && $botAccount !== '' && $row['actor_id'] === $botAccount)) {
+					$others = false;
+				}
+			}
+			$result->closeCursor();
+			return $me && $others;
+		} catch (\Throwable $e) {
+			$this->logger->warning('Talk-Bot: could not read the conversation from Talk: ' . $e->getMessage());
+			return false;
+		}
+	}
+
+	/** Whether $userId is an owner or moderator of the conversation. */
+	public function isModerator(string $token, string $userId): bool {
+		if (!$this->isTalkAvailable() || $token === '' || $userId === '') {
+			return false;
+		}
+		try {
+			$q = $this->db->getQueryBuilder();
+			$q->select('a.participant_type')->from('talk_attendees', 'a')
+				->innerJoin('a', 'talk_rooms', 'r', $q->expr()->eq('a.room_id', 'r.id'))
+				->where($q->expr()->eq('r.token', $q->createNamedParameter($token)))
+				->andWhere($q->expr()->eq('a.actor_type', $q->createNamedParameter('users')))
+				->andWhere($q->expr()->eq('a.actor_id', $q->createNamedParameter($userId)));
+			$type = $q->executeQuery()->fetchOne();
+			// Talk's Participant::OWNER = 1, MODERATOR = 2
+			return in_array((int)$type, [1, 2], true);
+		} catch (\Throwable $e) {
+			$this->logger->warning('Talk-Bot: could not read the conversation from Talk: ' . $e->getMessage());
+			return false;
 		}
 	}
 }

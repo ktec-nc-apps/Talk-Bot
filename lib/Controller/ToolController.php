@@ -49,7 +49,7 @@ class ToolController extends Controller {
 		if ($models === []) {
 			$note = $note !== '' ? $note : $this->l->t('No model list could be retrieved. Check the API key and the base URL.');
 		} elseif ($provider !== 'openai' && $this->config->getApiKey() === '' && $mode === 'api') {
-			$note = $this->l->t('No API key is set yet, so this is the list of well known models rather than yours.');
+			$note = $this->l->t('No API key is set yet, so this is a list of well-known models rather than the ones your key can use.');
 		}
 
 		return new JSONResponse([
@@ -85,7 +85,7 @@ class ToolController extends Controller {
 				'You are a connection test. Answer with one short word.',
 			);
 		} catch (\Throwable $e) {
-			return new JSONResponse(['ok' => false, 'detail' => $e->getMessage()]);
+			return new JSONResponse(['ok' => false, 'detail' => \OCA\TalkBot\Service\Redact::text($e->getMessage(), \OCA\TalkBot\Service\Redact::keysOf($this->config))]);
 		}
 
 		return new JSONResponse([
@@ -93,7 +93,7 @@ class ToolController extends Controller {
 			'engine' => $provider . ' / ' . $mode,
 			'model' => $model,
 			'reply' => mb_substr($result->output, 0, 200),
-			'detail' => mb_substr($result->detail, 0, 500),
+			'detail' => mb_substr(\OCA\TalkBot\Service\Redact::text($result->detail, \OCA\TalkBot\Service\Redact::keysOf($this->config)), 0, 500),
 		]);
 	}
 
@@ -145,7 +145,11 @@ class ToolController extends Controller {
 					'id' => $provider . '/cli',
 					'label' => $label . ' — ' . $this->l->t('command line tool'),
 					'ready' => (bool)$check['ok'],
-					'detail' => (string)$check['detail'],
+					'detail' => match ($check['reason'] ?? '') {
+						'no_path' => $this->l->t('No path configured.'),
+						'exit_code' => $this->l->t('The command line tool ended with exit code %s.', [(string)($check['code'] ?? '')]),
+						default => (string)$check['detail'],
+					},
 				];
 			}
 		}

@@ -41,10 +41,11 @@ class GeminiApiEngine extends AbstractHttpEngine {
 		}
 		$contents[] = ['role' => 'user', 'parts' => [['text' => $message]]];
 
-		$url = self::BASE . '/models/' . rawurlencode($this->config->getModel('gemini'))
-			. ':generateContent?key=' . rawurlencode($key);
+		// The key goes in a header, never in the address: an error from the HTTP
+		// client repeats the address, and it was posted to the room (review T1).
+		$url = self::BASE . '/models/' . rawurlencode($this->config->getModel('gemini')) . ':generateContent';
 
-		$result = $this->request('POST', $url, ['content-type' => 'application/json'], [
+		$result = $this->request('POST', $url, ['content-type' => 'application/json', 'x-goog-api-key' => $key], [
 			'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
 			'contents' => $contents,
 		]);
@@ -69,7 +70,7 @@ class GeminiApiEngine extends AbstractHttpEngine {
 		if ($key === '') {
 			return self::KNOWN_MODELS;
 		}
-		$result = $this->request('GET', self::BASE . '/models?pageSize=200&key=' . rawurlencode($key), []);
+		$result = $this->request('GET', self::BASE . '/models?pageSize=200', ['x-goog-api-key' => $key]);
 		if ($result['status'] < 200 || $result['status'] > 299) {
 			return self::KNOWN_MODELS;
 		}

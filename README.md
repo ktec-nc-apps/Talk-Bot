@@ -56,14 +56,15 @@ waits for the model.
 
 ### And the rest
 
-- **Per-conversation memory.** Every user keeps their own history in every room.
+- **Per-conversation memory.** Every user keeps their own history in every room. Optionally forget it a set number of days after the last message (default: kept until `?reset`).
+- **Fair use.** Limit questions per user per minute and how many answers are worked on at once, per user and in total.
 - **Commands** — `?help`, `?reset`, `?status`.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
 
 ### Requirements
 
-- Nextcloud 30 – 32 with the **Talk** app
+- Nextcloud 31 – 35 with the **Talk** app (Talk 21 or later: Nextcloud 30 / Talk 20 cannot run bots of this kind)
 - PHP 8.1 or newer
 - An API key for the service you choose, or a Claude/Gemini command line tool
   (and its subscription login) on the server
@@ -96,11 +97,14 @@ engine**, and it is split into two independent tiers that are decided from each
 sender's Nextcloud account.
 
 **Who counts as an administrator.** A request is treated as *elevated* only when
-all three of these are true:
+all four of these are true:
 
 1. the sender is a member of the Nextcloud **admin group**,
 2. the **command line** engine is the selected way to reach the model, and
-3. the **Tools for Nextcloud administrators** field is not empty.
+3. the **Tools for Nextcloud administrators** field is not empty, and
+4. the conversation is one where nobody else reads the answer: the administrator's
+   one-to-one conversation with **the bot's own Talk account** (a setting), or a
+   conversation the administrator is alone in.
 
 Because the first condition is Nextcloud's own admin group, administrator power
 follows your existing roles automatically: promote or demote someone in Nextcloud
@@ -197,14 +201,15 @@ App Store から普通のアプリと同じように入れるだけで、別に�
 
 ### その他
 
-- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。
+- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。最後の発言から決めた日数で忘れるようにもできます（既定は `?reset` まで残す）。
+- **使いすぎの防止。** 1 人あたり 1 分間の質問数と、同時に作成中の回答の数（1 人あたり・全員合わせて）を制限できます。
 - **コマンド** — `?help`、`?reset`、`?status`。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 
 ### 動作条件
 
-- Nextcloud 30 〜 32 と **Talk** アプリ
+- Nextcloud 31 〜 35 と **Talk** アプリ（Talk 21 以降。Nextcloud 30 / Talk 20 ではこの形のボットは動きません）
 - PHP 8.1 以降
 - 選んだサービスのAPIキー、またはサーバー上の Claude/Gemini コマンドラインツール
   （とそのサブスクリプションのログイン）
@@ -233,12 +238,14 @@ Talk はアプリ内ボットを「送信者のメッセージを投稿してい
 コマンドの実行、設定の変更——は **CLIエンジン** の任意機能で、送信者の Nextcloud
 アカウントから判定される、独立した二段構えになっています。
 
-**誰が「管理者」として扱われるか。** リクエストが *昇格* 扱いになるのは、次の3つが
+**誰が「管理者」として扱われるか。** リクエストが *昇格* 扱いになるのは、次の4つが
 すべて満たされたときだけです。
 
 1. 送信者が Nextcloud の **admin グループ** のメンバーであること、
 2. モデルへの接続方法として **コマンドライン** エンジンが選ばれていること、
-3. **Nextcloud管理者向けのツール** の欄が空でないこと。
+3. **Nextcloud管理者向けのツール** の欄が空でないこと、
+4. ほかの人に答えが見えない会話であること。つまり、管理者と **ボット用の Talk アカウント**（設定で指定）
+   だけの 1 対 1 の会話か、管理者ひとりだけの会話。
 
 1つ目の条件が Nextcloud 自身の admin グループなので、管理者権限は既存の役割に自動で
 連動します。Nextcloud 側で管理者に昇格・降格すれば、ボットのアクセスもそれに従います。

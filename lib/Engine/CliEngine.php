@@ -61,15 +61,26 @@ class CliEngine implements IEngine {
 		$tools = $elevated ? $this->config->getAdminTools() : $this->config->getUserTools();
 
 		if ($this->provider === 'gemini') {
-			$argv = [$binary, '-m', $model, '-p', $systemPrompt . "\n\n" . $prompt];
+			// "--prompt=…" in one piece, so a message starting with "-" is never read as an option (review T11).
+			$argv = [$binary, '-m', $model, '--prompt=' . $systemPrompt . "\n\n" . $prompt];
 			if ($elevated && $tools !== '') {
 				// Gemini's tools cannot be listed one by one; it is all or nothing.
 				$argv[] = '--yolo';
+			} else {
+				// Nothing was switched off before: Gemini's own rules let read_file,
+				// glob and grep_search run unasked, so an ordinary user could have it
+				// read the credentials in its home (review T2). An admin policy that
+				// denies every tool outranks those rules.
+				$argv[] = '--admin-policy';
+				$argv[] = __DIR__ . '/policy/no-tools.toml';
 			}
 		} else {
+			// The prompt goes in on stdin, not as an argument: the whole conversation in
+			// one argument ran past the kernel's 128 KiB limit after ten exchanges or so,
+			// and every user of the machine could read it in the process list (review T6).
 			$argv = [
 				$binary,
-				'-p', $prompt,
+				'-p',
 				'--model', $model,
 				'--output-format', 'text',
 				// An empty list really does disable every tool: the model then has
@@ -91,7 +102,7 @@ class CliEngine implements IEngine {
 			]);
 		}
 
-		$run = $this->exec($argv, $this->config->getRequestTimeout());
+		$run = $this->exec($argv, $this->config->getRequestTimeout(), $elevated && $tools !== '', $this->provider === 'gemini' ? null : $prompt);
 		$combined = $run['stdout'] . "\n" . $run['stderr'];
 
 		if ($run['timedOut']) {
@@ -118,24 +129,37 @@ class CliEngine implements IEngine {
 		return $this->provider === 'gemini' ? self::GEMINI_MODELS : self::CLAUDE_MODELS;
 	}
 
-	/** Check that the configured binary exists and runs. */
+	/**
+	 * Check that the configured binary exists and runs. 'reason' tells the admin page
+	 * which sentence to show, in the admin's language ('no_path', 'exit_code' with 'code');
+	 * 'detail' is otherwise the tool's own --version output.
+	 */
 	public function checkBinary(): array {
 		$binary = $this->config->getCliPath($this->provider);
 		if ($binary === '') {
-			return ['ok' => false, 'detail' => 'No path configured.'];
+			return ['ok' => false, 'detail' => '', 'reason' => 'no_path'];
 		}
 		$run = $this->exec([$binary, '--version'], 30);
 		$output = trim($run['stdout'] . ' ' . $run['stderr']);
-		return [
-			'ok' => $run['code'] === 0,
-			'detail' => $output === '' ? ('exit code ' . $run['code']) : mb_substr($output, 0, 200),
-		];
+		return $output === ''
+			? ['ok' => $run['code'] === 0, 'detail' => '', 'reason' => 'exit_code', 'code' => $run['code']]
+			: ['ok' => $run['code'] === 0, 'detail' => mb_substr($output, 0, 200)];
 	}
 
 	/** @param list<array{role: string, text: string}> $history */
 	private function buildPrompt(array $history, string $message): string {
 		if ($history === []) {
 			return $message;
+		}
+		// Gemini still takes the prompt as an argument: the oldest exchanges go first
+		// until it fits well inside the kernel's limit (review T6).
+		if ($this->provider === 'gemini') {
+			while ($history !== [] && strlen(implode("\n", array_column($history, 'text'))) + strlen($message) > 100000) {
+				array_shift($history);
+			}
+			if ($history === []) {
+				return $message;
+			}
 		}
 		$lines = ['Conversation so far:'];
 		foreach ($history as $turn) {
@@ -160,21 +184,35 @@ class CliEngine implements IEngine {
 	 * @param list<string> $argv
 	 * @return array{code: int, stdout: string, stderr: string, timedOut: bool}
 	 */
-	private function exec(array $argv, int $timeout): array {
+	private function exec(array $argv, int $timeout, bool $inHome = false, ?string $stdin = null): array {
 		$env = ['PATH' => getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin'];
 		$home = $this->config->getCliHome();
 		if ($home !== '') {
 			$env['HOME'] = $home;
 		}
-		// Run in the tool's own home when there is one, so its project settings and
-		// any notes it keeps stay in the same place from one message to the next.
-		$cwd = is_dir($home) ? $home : ($this->tempManager->getTemporaryFolder() ?: sys_get_temp_dir());
+		// An administrator's run with tools works in the tool's own home, so its project
+		// settings and notes stay in one place. Anybody else's run works in an empty
+		// folder made for that message: the home holds the tool's login, and the
+		// folder a tool works in is the folder it can read (review T2).
+		$cwd = ($inHome && is_dir($home)) ? $home : ($this->tempManager->getTemporaryFolder() ?: sys_get_temp_dir());
 
-		$descriptors = [0 => ['file', '/dev/null', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
+		// In a session of its own, so a timeout can end the tool and everything it started (review T13).
+		$setsid = is_executable('/usr/bin/setsid') ? '/usr/bin/setsid' : (is_executable('/bin/setsid') ? '/bin/setsid' : '');
+		if ($setsid !== '' && function_exists('posix_kill')) {
+			array_unshift($argv, $setsid);
+		} else {
+			$setsid = '';
+		}
+
+		$descriptors = [0 => $stdin === null ? ['file', '/dev/null', 'r'] : ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
 		$process = @proc_open($argv, $descriptors, $pipes, $cwd, $env);
 		if (!is_resource($process)) {
 			$this->logger->error('Talk-Bot: could not start ' . $argv[0]);
 			return ['code' => -1, 'stdout' => '', 'stderr' => 'Could not start ' . $argv[0], 'timedOut' => false];
+		}
+		if ($stdin !== null) {
+			fwrite($pipes[0], $stdin);
+			fclose($pipes[0]);
 		}
 
 		stream_set_blocking($pipes[1], false);
@@ -184,6 +222,9 @@ class CliEngine implements IEngine {
 		$stderr = '';
 		$deadline = time() + $timeout;
 		$timedOut = false;
+		// Before PHP 8.3, proc_close() answers -1 once proc_get_status() has seen the
+		// process end: the exit code is the one seen here (review T8).
+		$exit = null;
 
 		while (true) {
 			$stdout .= (string)stream_get_contents($pipes[1]);
@@ -191,10 +232,14 @@ class CliEngine implements IEngine {
 
 			$status = proc_get_status($process);
 			if (!$status['running']) {
+				$exit = (int)$status['exitcode'];
 				break;
 			}
 			if (time() >= $deadline) {
 				$timedOut = true;
+				if ($setsid !== '') {
+					posix_kill(-(int)$status['pid'], 9);
+				}
 				proc_terminate($process, 9);
 				break;
 			}
@@ -206,6 +251,9 @@ class CliEngine implements IEngine {
 		fclose($pipes[1]);
 		fclose($pipes[2]);
 		$code = proc_close($process);
+		if ($exit !== null && $exit >= 0) {
+			$code = $exit;
+		}
 
 		return ['code' => $code, 'stdout' => $stdout, 'stderr' => $stderr, 'timedOut' => $timedOut];
 	}

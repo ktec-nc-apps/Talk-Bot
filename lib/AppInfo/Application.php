@@ -10,12 +10,14 @@ declare(strict_types=1);
 namespace OCA\TalkBot\AppInfo;
 
 use OCA\TalkBot\Listener\BotInvokeListener;
+use OCA\TalkBot\Listener\CleanupListener;
 use OCA\TalkBot\Settings\AdminForm;
 use OCA\TalkBot\Settings\AdminFormAccess;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
 use OCP\AppFramework\Bootstrap\IRegistrationContext;
+use OCP\User\Events\UserDeletedEvent;
 
 class Application extends App implements IBootstrap {
 
@@ -35,6 +37,8 @@ class Application extends App implements IBootstrap {
 			'OCA\Talk\Events\BotInvokeEvent',
 			BotInvokeListener::class,
 		);
+		$context->registerEventListener(UserDeletedEvent::class, CleanupListener::class);
+		$context->registerEventListener('OCA\Talk\Events\RoomDeletedEvent', CleanupListener::class);
 		$context->registerDeclarativeSettings(AdminForm::class);
 		$context->registerDeclarativeSettings(AdminFormAccess::class);
 	}
