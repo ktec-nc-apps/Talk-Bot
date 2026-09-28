@@ -22,6 +22,7 @@ final class CommandResult {
 		public readonly ?string $reply,
 		public readonly ?string $prompt,
 		public readonly bool $persist,
+		public readonly ?string $task = null,
 	) {
 	}
 
@@ -38,6 +39,13 @@ final class CommandResult {
 	 */
 	public static function prompt(string $text, bool $persist): self {
 		return new self(null, $text, $persist);
+	}
+
+	/**
+	 * Post $notice straight away, then run a slow job (see ReplyService) and post its result.
+	 */
+	public static function task(string $task, string $notice): self {
+		return new self($notice, null, false, $task);
 	}
 
 	public function isReply(): bool {

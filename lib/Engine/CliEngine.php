@@ -23,14 +23,19 @@ use Psr\Log\LoggerInterface;
  */
 class CliEngine implements IEngine {
 
+	/** Only used when the installed tool cannot be read (see scanClaudeModels). */
 	private const CLAUDE_MODELS = [
-		'claude-opus-5',
-		'claude-opus-4-8',
-		'claude-opus-4-7',
-		'claude-sonnet-5',
-		'claude-sonnet-4-6',
+		'claude-fable-5-1',
+		'claude-opus-5-5',
+		'claude-sonnet-5-5',
 		'claude-haiku-4-5',
 	];
+
+	/** Families in the order they are listed. */
+	private const CLAUDE_FAMILIES = ['fable', 'opus', 'sonnet', 'haiku'];
+
+	/** Short names the tool resolves to the newest model of a family itself. */
+	public const CLAUDE_ALIASES = ['fable', 'opus', 'sonnet', 'haiku'];
 
 	private const GEMINI_MODELS = [
 		'gemini-2.5-pro',
@@ -126,7 +131,95 @@ class CliEngine implements IEngine {
 	}
 
 	public function listModels(): array {
-		return $this->provider === 'gemini' ? self::GEMINI_MODELS : self::CLAUDE_MODELS;
+		if ($this->provider === 'gemini') {
+			return self::GEMINI_MODELS;
+		}
+		$binary = $this->config->getCliPath($this->provider);
+		$real = $binary === '' ? false : realpath($binary);
+		if ($real === false) {
+			$found = trim((string)shell_exec('command -v ' . escapeshellarg($binary) . ' 2>/dev/null'));
+			$real = $found === '' ? false : realpath($found);
+		}
+		if ($real === false || !is_file($real)) {
+			return self::CLAUDE_MODELS;
+		}
+		// The tool knows its own models; reading them from the installed build keeps
+		// the list right after every update, where a list written here goes stale.
+		$stamp = $real . ':' . filesize($real) . ':' . filemtime($real);
+		$cached = json_decode($this->config->getString('cli_models_cache'), true);
+		if (is_array($cached) && ($cached['stamp'] ?? '') === $stamp && is_array($cached['models'] ?? null) && $cached['models'] !== []) {
+			return $cached['models'];
+		}
+		$models = $this->scanClaudeModels($real);
+		if ($models === []) {
+			return self::CLAUDE_MODELS;
+		}
+		$this->config->setString('cli_models_cache', (string)json_encode(['stamp' => $stamp, 'models' => $models]));
+		return $models;
+	}
+
+	/**
+	 * The current models the installed Claude Code knows: for each family, every
+	 * version of its newest generation, newest first (older generations and dated
+	 * snapshots are left out; they can still be chosen by their full name).
+	 *
+	 * @return list<string>
+	 */
+	private function scanClaudeModels(string $file): array {
+		$fh = @fopen($file, 'rb');
+		if ($fh === false) {
+			return [];
+		}
+		$seen = [];
+		$tail = '';
+		while (!feof($fh)) {
+			$chunk = $tail . (string)fread($fh, 8 << 20);
+			if (preg_match_all('/"claude-(fable|opus|sonnet|haiku)-(\d{1,2})(?:-(\d{1,2}))?"/', $chunk, $m, PREG_SET_ORDER) > 0) {
+				foreach ($m as $hit) {
+					$seen[$hit[1]][$hit[0]] = [(int)$hit[2], isset($hit[3]) && $hit[3] !== '' ? (int)$hit[3] : 0];
+				}
+			}
+			$tail = substr($chunk, -64);
+		}
+		fclose($fh);
+		$models = [];
+		foreach (self::CLAUDE_FAMILIES as $family) {
+			if (!isset($seen[$family])) {
+				continue;
+			}
+			$versions = $seen[$family];
+			uasort($versions, fn ($a, $b) => [$b[0], $b[1]] <=> [$a[0], $a[1]]);
+			$newest = reset($versions)[0];
+			foreach ($versions as $quoted => [$major]) {
+				if ($major === $newest) {
+					$models[] = trim($quoted, '"');
+				}
+			}
+		}
+		return $models;
+	}
+
+	/**
+	 * Ask the model for one word, to learn whether the tool accepts the name and
+	 * which model it really is (a short name like "sonnet" resolves to a full one).
+	 *
+	 * @return array{ok: bool, resolved: string, detail: string}
+	 */
+	public function probeModel(string $model): array {
+		$binary = $this->config->getCliPath($this->provider);
+		if ($binary === '' || $this->provider !== 'claude') {
+			return ['ok' => true, 'resolved' => $model, 'detail' => ''];
+		}
+		$run = $this->exec([$binary, '-p', '--model', $model, '--output-format', 'json', '--tools', ''], 120, false, 'Reply with OK');
+		$out = json_decode(trim($run['stdout']), true);
+		if (!is_array($out)) {
+			$detail = trim($run['stdout'] . ' ' . $run['stderr']);
+			return ['ok' => false, 'resolved' => '', 'detail' => $run['timedOut'] ? 'timeout' : mb_substr($detail, 0, 300)];
+		}
+		$used = array_keys(is_array($out['modelUsage'] ?? null) ? $out['modelUsage'] : []);
+		$ok = empty($out['is_error']) && $used !== [];
+		$detail = $ok ? '' : mb_substr(trim($run['stderr'] . ' ' . (string)($out['result'] ?? '')), 0, 300);
+		return ['ok' => $ok, 'resolved' => (string)($used[0] ?? ''), 'detail' => $detail];
 	}
 
 	/**
@@ -144,6 +237,31 @@ class CliEngine implements IEngine {
 		return $output === ''
 			? ['ok' => $run['code'] === 0, 'detail' => '', 'reason' => 'exit_code', 'code' => $run['code']]
 			: ['ok' => $run['code'] === 0, 'detail' => mb_substr($output, 0, 200)];
+	}
+
+	/**
+	 * Update the command line tool with its own update command (Claude Code only).
+	 *
+	 * @return array{ok: bool, before: string, after: string, detail: string}
+	 */
+	public function update(): array {
+		$binary = $this->config->getCliPath($this->provider);
+		if ($binary === '' || $this->provider !== 'claude') {
+			return ['ok' => false, 'before' => '', 'after' => '', 'detail' => 'unsupported'];
+		}
+		$version = function () use ($binary): string {
+			$run = $this->exec([$binary, '--version'], 30);
+			return preg_match('/\d+\.\d+\.\d+/', $run['stdout'], $m) === 1 ? $m[0] : '';
+		};
+		$before = $version();
+		$run = $this->exec([$binary, 'update'], 600);
+		$after = $version();
+		return [
+			'ok' => $run['code'] === 0 && !$run['timedOut'],
+			'before' => $before,
+			'after' => $after,
+			'detail' => mb_substr(trim($run['stdout'] . "\n" . $run['stderr']), -500),
+		];
 	}
 
 	/** @param list<array{role: string, text: string}> $history */

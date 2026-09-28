@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace OCA\TalkBot\Service;
 
+use OCA\TalkBot\Engine\CliEngine;
+use OCA\TalkBot\Engine\EngineFactory;
+
 use OCP\App\IAppManager;
 use OCP\IGroupManager;
 use OCP\IL10N;
@@ -24,14 +27,14 @@ use OCP\Security\ISecureRandom;
 class CommandService {
 
 	private const KNOWN = [
-		'help', 'reset', 'clear', 'status', 'model', 'whoami', 'version', 'ping',
+		'help', 'reset', 'clear', 'status', 'whoami', 'version', 'ping',
 		'undo', 'retry', 'again', 'summary', 'tldr', 'joke', 'roll', 'dice',
-		'flip', '8ball', 'lang',
+		'flip', '8ball', 'lang', 'model', 'update',
 	];
 
 	/** Commands that expect no argument: extra words send the message to the model instead. */
 	private const NO_ARG = [
-		'help', 'reset', 'clear', 'status', 'model', 'whoami', 'version', 'ping',
+		'help', 'reset', 'clear', 'status', 'whoami', 'version', 'ping',
 		'undo', 'retry', 'again', 'summary', 'tldr', 'joke', 'flip',
 	];
 
@@ -49,6 +52,7 @@ class CommandService {
 		private IAppManager $appManager,
 		private ISecureRandom $random,
 		private TalkService $talk,
+		private EngineFactory $engines,
 	) {
 	}
 
@@ -78,7 +82,18 @@ class CommandService {
 			case 'status':
 				return CommandResult::reply($this->status($token, $userId, $l));
 			case 'model':
-				return CommandResult::reply($this->modelInfo($l));
+				return CommandResult::reply($this->model($args, $userId, $l));
+			case 'update':
+				if ($args !== '') {
+					return null;
+				}
+				if (!$this->groupManager->isAdmin($userId)) {
+					return CommandResult::reply($l->t('Only an administrator can update the command line tool.'));
+				}
+				if ($this->config->getMode() !== 'cli' || $this->config->getProvider() !== 'claude') {
+					return CommandResult::reply($l->t('?update works only when the bot uses the Claude command line tool.'));
+				}
+				return CommandResult::task('update', '⏳ ' . $l->t('Checking for an update of the command line tool…'));
 			case 'whoami':
 				return CommandResult::reply($this->whoami($userId, $l));
 			case 'version':
@@ -166,7 +181,8 @@ class CommandService {
 			'*' . $l->t('Info') . '*',
 			'- `?help` — ' . $l->t('show this help'),
 			'- `?status` — ' . $l->t('show the engine, model and memory'),
-			'- `?model` — ' . $l->t('show the model in use'),
+			'- `?model` — ' . $l->t('show the model in use and the ones it can be switched to; ?model <name> switches (administrators)'),
+			'- `?update` — ' . $l->t('update the command line tool the bot uses (administrators)'),
 			'- `?whoami` — ' . $l->t('show your access level'),
 			'- `?version` — ' . $l->t('show the app version'),
 			'*' . $l->t('Fun') . '*',
@@ -188,9 +204,117 @@ class CommandService {
 		]);
 	}
 
-	private function modelInfo(IL10N $l): string {
-		$model = $this->config->getModel();
-		return $l->t('Model in use: %s', [$model === '' ? '—' : $model]);
+	/**
+	 * ?model — the model in use and the ones it can be switched to; ?model <name>
+	 * (or its number in the list) switches, for everybody, so only an administrator
+	 * may (owner, 2026-09-29).
+	 */
+	private function model(string $args, string $userId, IL10N $l): string {
+		$current = $this->config->getModel();
+		$engine = null;
+		$models = [];
+		try {
+			$engine = $this->engines->get();
+			$models = array_values($engine->listModels());
+		} catch (\Throwable $e) {
+			$models = [];
+		}
+		$cli = $engine instanceof CliEngine && $this->config->getProvider() === 'claude';
+		$want = trim($args);
+		if ($want === '') {
+			$lines = [$l->t('Model in use: %s', [$current === '' ? '—' : $current])];
+			if ($models === []) {
+				$lines[] = $l->t('No list of models could be retrieved.');
+			} else {
+				$lines[] = '';
+				$lines[] = $cli
+					? $l->t('Models the installed Claude Code knows:')
+					: $l->t('Models it can be switched to:');
+				foreach ($models as $i => $m) {
+					$lines[] = ($i + 1) . '. `' . $m . '`' . ($m === $current ? ' ← ' . $l->t('in use') : '');
+				}
+				if ($cli) {
+					$lines[] = '';
+					$lines[] = $l->t('The short names %s always mean the newest model of that kind.', ['`' . implode('`, `', CliEngine::CLAUDE_ALIASES) . '`']);
+				}
+			}
+			$lines[] = '';
+			$lines[] = $l->t('To switch, write ?model and a name or its number (administrators only).');
+			return implode("\n", $lines);
+		}
+		if (!$this->groupManager->isAdmin($userId)) {
+			return $l->t('Only an administrator can change the model.');
+		}
+		if (preg_match('/^\d{1,3}$/', $want) === 1) {
+			if (!isset($models[(int)$want - 1])) {
+				return $l->t('There is no model number %s. Write ?model to see the list.', [$want]);
+			}
+			$want = $models[(int)$want - 1];
+		} else {
+			foreach ($models as $m) {
+				if (strcasecmp($m, $want) === 0) {
+					$want = $m;
+				}
+			}
+			if ($cli) {
+				$want = strtolower($want);
+			} elseif (!in_array($want, $models, true)) {
+				return $l->t('%s is not one of the models it can be switched to. Write ?model to see the list.', [$want]);
+			}
+		}
+		if (mb_strlen($want) > 200 || preg_match('/^[A-Za-z0-9._:\/-]+$/', $want) !== 1) {
+			return $l->t('That is not a valid model name.');
+		}
+		if ($want === $current) {
+			return $l->t('%s is already in use.', [$want]);
+		}
+		$resolved = '';
+		if ($cli) {
+			// Tried before it is kept: a name the tool does not accept would leave
+			// every later message without an answer.
+			$probe = $engine->probeModel($want);
+			if (!$probe['ok']) {
+				return '⚠️ ' . $l->t('%s could not be used, so the model was not changed.', [$want])
+					. ($probe['detail'] !== '' ? "\n```\n" . $probe['detail'] . "\n```" : '');
+			}
+			$resolved = $probe['resolved'];
+		}
+		$this->config->setModel($want);
+		$text = $l->t('Model changed: %1$s → %2$s', [$current === '' ? '—' : $current, $want]);
+		if ($resolved !== '' && $resolved !== $want) {
+			$text .= "\n" . $l->t('(It answers as %s.)', [$resolved]);
+		}
+		return $text;
+	}
+
+	/** Run the command line tool's update; one at a time. Called by ReplyService after the notice is posted. */
+	public function runUpdate(IL10N $l): string {
+		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
+		if (!$cache->add('cli_update_running', 1, 900)) {
+			return $l->t('An update is already running. Please wait for it to finish.');
+		}
+		try {
+			$engine = $this->engines->get();
+			if (!$engine instanceof CliEngine) {
+				return $l->t('?update works only when the bot uses the Claude command line tool.');
+			}
+			$before = $engine->listModels();
+			$r = $engine->update();
+			if (!$r['ok']) {
+				return '⚠️ ' . $l->t('The update failed.') . ($r['detail'] !== '' ? "\n```\n" . $r['detail'] . "\n```" : '');
+			}
+			if ($r['before'] !== '' && $r['before'] === $r['after']) {
+				return '✅ ' . $l->t('Already up to date (%s).', [$r['after']]);
+			}
+			$text = '✅ ' . $l->t('Updated: %1$s → %2$s', [$r['before'] === '' ? '—' : $r['before'], $r['after'] === '' ? '—' : $r['after']]);
+			$added = array_values(array_diff($engine->listModels(), $before));
+			if ($added !== []) {
+				$text .= "\n" . $l->t('Models new in this version: %s', ['`' . implode('`, `', $added) . '`']) . "\n" . $l->t('Write ?model to switch.');
+			}
+			return $text;
+		} finally {
+			$cache->remove('cli_update_running');
+		}
 	}
 
 	private function whoami(string $userId, IL10N $l): string {

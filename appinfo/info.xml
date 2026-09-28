@@ -61,6 +61,7 @@ send `?whoami` to see their own tier.
   `?reset` starts over.
 - **Commands.** `?reset`, `?undo`, `?retry`, `?summary` and `?lang <code>` for the
   conversation; `?help`, `?status`, `?model`, `?whoami` and `?version` for information;
+  `?model <name>` and `?update` for administrators, to switch the model and update Claude Code;
   and `?roll`, `?flip`, `?8ball`, `?ping` and `?joke` for fun. `?help` lists them all.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
@@ -125,7 +126,8 @@ App Store から普通のアプリと同じようにインストールする、1
 - **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`?reset` で
   やり直せます。
 - **コマンド。** 会話の操作は `?reset`・`?undo`・`?retry`・`?summary`・`?lang <コード>`、
-  情報は `?help`・`?status`・`?model`・`?whoami`・`?version`、ほかに遊び用の
+  情報は `?help`・`?status`・`?model`・`?whoami`・`?version`、
+  管理者用にモデルを切り替える `?model <名前>` と Claude Code を更新する `?update`、ほかに遊び用の
   `?roll`・`?flip`・`?8ball`・`?ping`・`?joke` があります。一覧は `?help` で出ます。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
@@ -139,7 +141,7 @@ API キーは Nextcloud の設定に暗号化して保存され、ブラウザ�
 Nextcloud Talk アプリが必要です。
 	]]></description>
 
-	<version>2.0.7</version>
+	<version>2.0.11</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>

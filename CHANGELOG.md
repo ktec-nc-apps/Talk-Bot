@@ -2,6 +2,41 @@
 
 All notable changes to Talk-Bot.
 
+## 2.0.11 — 2026-09-29
+
+Switch the model and update Claude Code from the chat.
+（チャットからモデルの切り替えと Claude Code の更新ができるようになった。）
+
+### New
+
+- **`?model <name or number>` switches the model** (administrators only). Before switching, the
+  bot sends the model one short test message and switches only if an answer comes back; a name
+  Claude Code does not accept is refused with its reason, and the model stays as it was.
+  （**`?model <名前か番号>` でモデルを切り替える**（管理者のみ）。切り替える前に短い試しの一言を送り、
+  答えが返ったときだけ切り替える。Claude Code が受け付けない名前は理由を添えて断り、モデルはそのまま。）
+- **The short names `fable`, `opus`, `sonnet`, `haiku`** can be used; they always mean the newest
+  model of that kind, and the reply says which model actually answers.
+  （**短い名前 `fable`・`opus`・`sonnet`・`haiku`** が使える。それぞれの種類の最新モデルを指し、
+  実際に答えるモデルを返事に添える。）
+- **`?update` updates the Claude Code the bot uses** (administrators only). The bot says it is
+  checking, then posts the old and new version (or that it is up to date) and any models the new
+  version adds. Only one update runs at a time.
+  （**`?update` でボットの使う Claude Code を更新する**（管理者のみ）。「確かめています」と返し、
+  前後の版（または最新であること）と、新しく使えるモデルを投稿する。更新は同時に一つだけ。）
+
+### Fixed
+
+- **`?model` now lists the models the installed Claude Code knows**, read from Claude Code itself.
+  The list was written into the app and had fallen behind: `claude-sonnet-5-5` was missing, and
+  `?update` would have made it older still.
+  （**`?model` は、入っている Claude Code が知っているモデルを一覧にする**。Claude Code 自体から読み取る。
+  これまでは一覧をアプリに書き込んでいて古くなっており、`claude-sonnet-5-5` が出なかった。）
+- **`?model` is a command again.** It was not registered as one, so the model answered it in
+  its own words instead of showing the model in use.
+  （**`?model` がコマンドとして動く**。コマンドとして登録されておらず、モデルが文章で答えていた。）
+- The list of models for the Claude API was brought up to date.
+  （Claude API 用のモデル一覧を最新にした。）
+
 ## 2.0.7 — 2026-09-25
 
 A release of fixes. The whole app was reviewed, and everything the review found is fixed here.

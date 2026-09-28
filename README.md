@@ -58,7 +58,7 @@ waits for the model.
 
 - **Per-conversation memory.** Every user keeps their own history in every room. Optionally forget it a set number of days after the last message (default: kept until `?reset`).
 - **Fair use.** Limit questions per user per minute and how many answers are worked on at once, per user and in total.
-- **Commands** — `?help`, `?reset`, `?status`.
+- **Commands** — `?help`, `?reset`, `?status`, `?model`, `?update`.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
 
@@ -165,6 +165,16 @@ a short explicit list over `default` when a few tools are enough.
 | `?reset` | Forget this conversation and start over |
 | `?status` | Show the engine, model and how much is remembered |
 | `?whoami` | Show your access level — sandboxed, or which admin tools you have |
+| `?model` | Show the model in use and the models it can be switched to |
+| `?model <name or number>` | Switch the model (administrators only) |
+| `?update` | Update the Claude Code the bot uses (administrators only) |
+
+### Switching the model and updating Claude Code from the chat
+
+- **`?model`** lists the models it can be switched to. With Claude Code, the list is read from the Claude Code installed on the server, so it always matches what that version knows — no list in the app to fall behind.
+- **`?model <name>`** or **`?model <number>`** switches, for administrators. Before switching, the bot sends the model one short test message; it switches only if an answer comes back. A name Claude Code does not accept is refused with its reason, and the model stays as it was. (The test message costs a few cents and takes a few seconds.)
+- The short names **`fable`, `opus`, `sonnet`, `haiku`** always mean the newest model of that kind; the reply tells you which model actually answers.
+- **`?update`** updates the Claude Code the bot uses, for administrators. The bot says it is checking, then posts the result: the old and new version, or that it is already up to date — and any models the new version adds. Only one update runs at a time.
 
 ---
 
@@ -203,7 +213,7 @@ App Store から普通のアプリと同じように入れるだけで、別に�
 
 - **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。最後の発言から決めた日数で忘れるようにもできます（既定は `?reset` まで残す）。
 - **使いすぎの防止。** 1 人あたり 1 分間の質問数と、同時に作成中の回答の数（1 人あたり・全員合わせて）を制限できます。
-- **コマンド** — `?help`、`?reset`、`?status`。
+- **コマンド** — `?help`、`?reset`、`?status`、`?model`、`?update`。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 
@@ -302,6 +312,16 @@ Nextcloud 自身のファイルとデータを完全に操作できます。こ�
 | `?reset` | この会話を忘れて最初からやり直します |
 | `?status` | エンジン・モデル・記憶量を表示します |
 | `?whoami` | 自分の権限レベル（サンドボックス／付与された管理者ツール）を表示します |
+| `?model` | 使用中のモデルと、切り替えられるモデルを表示します |
+| `?model <名前か番号>` | モデルを切り替えます（管理者のみ） |
+| `?update` | ボットが使う Claude Code を更新します（管理者のみ） |
+
+### チャットからモデルを切り替え、Claude Code を更新する
+
+- **`?model`** で、切り替えられるモデルを一覧にします。Claude Code を使うときは、サーバーに入っている Claude Code 自体から一覧を読み取るので、その版が知っているモデルといつも一致します。アプリ内の一覧が古くなることはありません。
+- **`?model <名前>`** または **`?model <番号>`** で、管理者が切り替えます。切り替える前に、そのモデルへ短い試しの一言を送り、答えが返ったときだけ切り替えます。Claude Code が受け付けない名前は理由を添えて断り、モデルはそのままです（試しの一言は数セント・数秒かかります）。
+- 短い名前 **`fable`・`opus`・`sonnet`・`haiku`** は、それぞれの種類の最新モデルを指します。実際にどのモデルが答えるかを返事に添えます。
+- **`?update`** で、管理者がボットの使う Claude Code を更新します。「確かめています」とすぐ返し、終わると結果（前後の版、または最新であること）と、新しい版で使えるようになったモデルを投稿します。更新は同時に一つしか走りません。
 
 ---
 

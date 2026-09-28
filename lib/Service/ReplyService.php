@@ -72,6 +72,9 @@ class ReplyService {
 		if ($command !== null) {
 			if ($command->isReply()) {
 				$this->botApi->sendMessage($token, $command->reply, $messageId);
+				if ($command->task === 'update') {
+					$this->botApi->sendMessage($token, $this->commands->runUpdate($l), $messageId);
+				}
 				return;
 			}
 			// A prompt macro (retry, summary, joke): let the model answer it.
