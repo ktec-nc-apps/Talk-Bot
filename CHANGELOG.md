@@ -2,7 +2,7 @@
 
 All notable changes to Talk-Bot.
 
-## 2.0.11 — 2026-09-29
+## 2.1.0 — 2026-09-29
 
 Switch the model and update Claude Code from the chat.
 （チャットからモデルの切り替えと Claude Code の更新ができるようになった。）
