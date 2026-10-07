@@ -10,23 +10,26 @@ declare(strict_types=1);
 namespace OCA\TalkBot\Settings;
 
 use OCA\TalkBot\Service\ConfigService;
+use OCA\TalkBot\Service\HubClient;
 use OCP\IL10N;
 use OCP\IUser;
 use OCP\Settings\DeclarativeSettingsTypes;
 use OCP\Settings\IDeclarativeSettingsFormWithHandlers;
 
 /**
- * Keys, endpoints and access rules.
+ * Talk-Bot's own settings.
  *
- * The second half of the section (priority 30). It sits after the engine choice
- * (AdminForm, priority 10) and the model picker (AdminTools, priority 20), so
- * the model is chosen right under the engine rather than after all of this.
+ * The AI service, key and model are AI-Hub's now, so this is only what is specific
+ * to the Talk side: how the bot replies, who may use it, how much it remembers and
+ * how fast it may be asked. A notice at the top says so, and warns when AI-Hub is
+ * absent or not set up, because without it the bot cannot answer.
  */
 class AdminFormAccess implements IDeclarativeSettingsFormWithHandlers {
 
 	public function __construct(
 		private IL10N $l,
 		private ConfigService $config,
+		private HubClient $hub,
 	) {
 	}
 
@@ -38,46 +41,32 @@ class AdminFormAccess implements IDeclarativeSettingsFormWithHandlers {
 		$this->config->setFormValue($fieldId, $value);
 	}
 
+	/**
+	 * The section description, with a line about AI-Hub first: Talk-Bot answers
+	 * through it, and cannot answer without it.
+	 */
+	private function description(): string {
+		$intro = $this->l->t('Talk-Bot answers through AI-Hub. The AI service, key and model are set in AI-Hub, under Administration settings → AI-Hub, and the same AI-Hub serves the other apps too. Below are only the settings specific to Talk.');
+		if (!$this->hub->present()) {
+			return '⚠ ' . $this->l->t('AI-Hub is not installed, so the bot cannot answer yet. Install it from the App Store (search for "AI-Hub"), then set the AI service, key and model in its settings.') . "\n\n" . $intro;
+		}
+		if (!$this->hub->ready()) {
+			return '⚠ ' . $this->l->t('AI-Hub is installed but not set up yet, so the bot cannot answer. Open Administration settings → AI-Hub and choose the AI service, key and model.') . "\n\n" . $intro;
+		}
+		return $intro;
+	}
+
 	public function getSchema(): array {
 		return [
 			'id' => 'ktec_talkbot-access',
-			'priority' => 30,
+			'priority' => 10,
 			'section_type' => DeclarativeSettingsTypes::SECTION_TYPE_ADMIN,
 			'section_id' => 'ktec_talkbot',
 			'storage_type' => DeclarativeSettingsTypes::STORAGE_TYPE_EXTERNAL,
-			'title' => $this->l->t('Keys and access'),
-			'description' => $this->l->t('The API key for the service you chose above, and who may use the bot.'),
+			'title' => $this->l->t('Talk-Bot'),
+			'description' => $this->description(),
 
 			'fields' => [
-				[
-					'id' => 'claude_api_key',
-					'title' => $this->l->t('Claude API key'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'gemini_api_key',
-					'title' => $this->l->t('Gemini API key'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'openai_api_key',
-					'title' => $this->l->t('API key for the OpenAI-compatible endpoint'),
-					'type' => DeclarativeSettingsTypes::PASSWORD,
-					'default' => '',
-					'sensitive' => true,
-				],
-				[
-					'id' => 'openai_base_url',
-					'title' => $this->l->t('Base URL of the OpenAI-compatible endpoint'),
-					'description' => $this->l->t('For example https://openrouter.ai/api/v1, https://api.openai.com/v1 or http://localhost:11434/v1'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => 'https://openrouter.ai/api/v1',
-					'default' => 'https://openrouter.ai/api/v1',
-				],
 				[
 					'id' => 'reply_language',
 					'title' => $this->l->t('Reply language'),
@@ -106,59 +95,6 @@ class AdminFormAccess implements IDeclarativeSettingsFormWithHandlers {
 					'description' => $this->l->t('Comma-separated user IDs, used only while the restriction above is on.'),
 					'type' => DeclarativeSettingsTypes::TEXT,
 					'placeholder' => 'alice, bob',
-					'default' => '',
-				],
-				[
-					'id' => 'cli_enabled',
-					'title' => $this->l->t('Allow the command line option'),
-					'description' => $this->l->t('Only turn this on if a Claude or Gemini command line tool is installed on this server and you want to use your subscription instead of an API key. The tool runs as the web server user.'),
-					'type' => DeclarativeSettingsTypes::CHECKBOX,
-					'default' => false,
-				],
-				[
-					'id' => 'claude_cli_path',
-					'title' => $this->l->t('Path to the Claude command line tool'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/usr/local/bin/claude',
-					'default' => 'claude',
-				],
-				[
-					'id' => 'gemini_cli_path',
-					'title' => $this->l->t('Path to the Gemini command line tool'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/usr/local/bin/gemini',
-					'default' => 'gemini',
-				],
-				[
-					'id' => 'cli_home',
-					'title' => $this->l->t('Home directory for the command line tool'),
-					'description' => $this->l->t('Where the tool keeps its login. Must be readable and writable by the web server user.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => '/var/lib/talkbot',
-					'default' => '',
-				],
-				[
-					'id' => 'cli_user_tools',
-					'title' => $this->l->t('Tools for ordinary users'),
-					'description' => $this->l->t('Empty means no tools at all: the bot can only talk. Otherwise a comma-separated list, for example WebSearch. Applies to everyone who is not a Nextcloud administrator.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = no tools (recommended)'),
-					'default' => '',
-				],
-				[
-					'id' => 'cli_admin_tools',
-					'title' => $this->l->t('Tools for Nextcloud administrators'),
-					'description' => $this->l->t('⚠ Leave empty unless you mean it. Anything you put here — "default" for all tools, or a list such as Bash,Read,Edit — lets every member of the admin group run it on this server from a chat message, with the rights of the web server user. Empty means administrators get the same as everyone else.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => $this->l->t('empty = administrators get no tools either'),
-					'default' => '',
-				],
-				[
-					'id' => 'bot_account',
-					'title' => $this->l->t('The bot\'s own Talk account'),
-					'description' => $this->l->t('The account people open a one-to-one conversation with to reach the bot. Administrator tools only work in an administrator\'s one-to-one conversation with this account, or in a conversation they are alone in, so nobody else sees what the tools return. Empty = only conversations the administrator is alone in.'),
-					'type' => DeclarativeSettingsTypes::TEXT,
-					'placeholder' => 'talk-bot',
 					'default' => '',
 				],
 				[

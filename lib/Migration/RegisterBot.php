@@ -52,7 +52,7 @@ class RegisterBot implements IRepairStep {
 				self::NAME,
 				$this->config->getBotSecret(),
 				Application::BOT_URL,
-				'Chat with Claude, Gemini or an OpenAI-compatible model.',
+				'Chat with the AI connected through AI-Hub.',
 				$features,
 			));
 			$output->info('Talk-Bot registered with Nextcloud Talk.');

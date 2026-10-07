@@ -85,7 +85,9 @@ class AsyncService {
 			// The message is not put in the job's arguments: they are capped at 4000
 			// bytes, and a Japanese message of 656 characters or more ran past it and
 			// threw (review T5). It is left in the app config and fetched by the job.
-			$ref = $this->random->generate(24, ISecureRandom::CHAR_ALPHANUMERIC);
+			// The time is part of the name, so a message the job never came for (cron
+			// stopped) can be swept once it is a day old (HistoryExpiry).
+			$ref = $this->timeFactory->getTime() . '_' . $this->random->generate(24, ISecureRandom::CHAR_ALPHANUMERIC);
 			\OCP\Server::get(\OCP\IConfig::class)->setAppValue('ktec_talkbot', 'pending_' . $ref, $text);
 			$this->jobList->add(ReplyJob::class, [
 				'token' => $token,

@@ -33,7 +33,7 @@ class ReplyJob extends QueuedJob {
 		}
 		$text = (string)($argument['text'] ?? '');
 		$ref = (string)($argument['ref'] ?? '');
-		if ($ref !== '' && preg_match('/^[A-Za-z0-9]+$/', $ref)) {
+		if ($ref !== '' && preg_match('/^[A-Za-z0-9_]+$/', $ref)) {
 			$cfg = \OCP\Server::get(\OCP\IConfig::class);
 			$text = $cfg->getAppValue('ktec_talkbot', 'pending_' . $ref, '');
 			$cfg->deleteAppValue('ktec_talkbot', 'pending_' . $ref);

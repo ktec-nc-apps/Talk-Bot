@@ -11,6 +11,7 @@ namespace OCA\TalkBot\Command;
 
 use OC\Core\Command\Base;
 use OCA\TalkBot\Service\ConfigService;
+use OCA\TalkBot\Service\HubClient;
 use OCA\TalkBot\Service\TalkService;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -21,6 +22,7 @@ class Status extends Base {
 	public function __construct(
 		private ConfigService $config,
 		private TalkService $talk,
+		private HubClient $hub,
 	) {
 		parent::__construct();
 	}
@@ -29,34 +31,28 @@ class Status extends Base {
 		parent::configure();
 		$this
 			->setName('ktec_talkbot:status')
-			->setDescription('Show the configured engine and how Talk sees the bot');
+			->setDescription('Show how the bot reaches AI-Hub and how Talk sees it');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int {
-		$provider = $this->config->getProvider();
-		$mode = $this->config->getMode();
 		$bot = $this->talk->getBot();
+		$hub = $this->hub->status();
+
+		if ($hub === null) {
+			$aiHub = 'required, but not installed';
+		} elseif (empty($hub['ready'])) {
+			$aiHub = 'installed, but not set up (reason: ' . ($hub['reason'] ?: 'unknown') . ')';
+		} else {
+			$aiHub = 'ready — ' . $hub['provider'] . ' / ' . $hub['mode'] . ', model ' . ($hub['model'] === '' ? '(none)' : $hub['model']);
+		}
 
 		$data = [
-			'provider' => $provider,
-			'mode' => $mode,
-			'model' => $this->config->getModel(),
-			'api_key' => $this->config->getApiKey() === '' ? 'not set' : 'set',
+			'ai_hub' => $aiHub,
 			'reply_language' => $this->config->getReplyLanguage() === '' ? 'follow the user' : $this->config->getReplyLanguage(),
 			'allow_list' => $this->config->isAllowlistEnabled()
 				? implode(', ', $this->config->getAllowedUsers()) ?: '(enabled but empty: nobody may use the bot)'
 				: 'off (everyone in the conversation)',
-			'cli_allowed' => $this->config->isCliEnabled() ? 'yes' : 'no',
 		];
-
-		if ($mode === 'cli') {
-			$data['cli_path'] = $this->config->getCliPath();
-			$data['cli_home'] = $this->config->getCliHome() === '' ? '(default)' : $this->config->getCliHome();
-			$data['user_tools'] = $this->config->getUserTools() === '' ? 'none (sandboxed)' : $this->config->getUserTools();
-			$data['admin_tools'] = $this->config->areAdminToolsEnabled()
-				? $this->config->getAdminTools() . ' (admin group only)'
-				: 'none (admins treated like everyone else)';
-		}
 
 		if (!$this->talk->isTalkAvailable()) {
 			$data['talk'] = 'Nextcloud Talk is not installed or not enabled';

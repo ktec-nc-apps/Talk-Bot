@@ -11,7 +11,7 @@ namespace OCA\TalkBot\AppInfo;
 
 use OCA\TalkBot\Listener\BotInvokeListener;
 use OCA\TalkBot\Listener\CleanupListener;
-use OCA\TalkBot\Settings\AdminForm;
+use OCA\TalkBot\Service\HubClient;
 use OCA\TalkBot\Settings\AdminFormAccess;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -39,10 +39,18 @@ class Application extends App implements IBootstrap {
 		);
 		$context->registerEventListener(UserDeletedEvent::class, CleanupListener::class);
 		$context->registerEventListener('OCA\Talk\Events\RoomDeletedEvent', CleanupListener::class);
-		$context->registerDeclarativeSettings(AdminForm::class);
 		$context->registerDeclarativeSettings(AdminFormAccess::class);
 	}
 
 	public function boot(IBootContext $context): void {
+		// AI-Hub, when it is installed, is told what Talk-Bot's chat is -- in every
+		// request, since the hub keeps scenarios in memory only and the request that
+		// works out an answer is not the one that asked. Referencing the class name
+		// only produces a string, so this stays safe where AI-Hub is not present.
+		if (class_exists('\\OCA\\AIHub\\Service\\HubService')) {
+			$context->injectFn(static function (HubClient $hub): void {
+				$hub->registerScenario();
+			});
+		}
 	}
 }

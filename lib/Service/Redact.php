@@ -12,9 +12,10 @@ namespace OCA\TalkBot\Service;
 /**
  * Takes secrets out of a text before it is shown to anybody or written to a log.
  *
- * An error from the HTTP client carries the address it was calling. Gemini's key
- * used to travel in that address (?key=AIza…), so a time-out posted the key to the
- * room, where every participant -- guests too -- could read it (review T1).
+ * Talk-Bot answers through AI-Hub and no longer holds any API key of its own, but
+ * an error that bubbles up from AI-Hub or the provider can still carry one, so
+ * every error the bot reports or logs is scrubbed first: a key in a URL, a Bearer
+ * token, an "sk-" or Google key, wherever it appears (review T1).
  */
 class Redact {
 	/** @param list<string> $secrets values that must never appear, whatever surrounds them */
@@ -33,17 +34,5 @@ class Redact {
 		$text = (string)preg_replace('/\bAIza[0-9A-Za-z_\-]{20,}/', '•••', $text);
 		$text = (string)preg_replace('/\bsk-[A-Za-z0-9_\-]{16,}/', '•••', $text);
 		return $text;
-	}
-
-	/** Every API key the settings hold. */
-	public static function keysOf(ConfigService $config): array {
-		$out = [];
-		foreach (['claude', 'gemini', 'openai'] as $provider) {
-			$k = $config->getApiKey($provider);
-			if ($k !== '') {
-				$out[] = $k;
-			}
-		}
-		return $out;
 	}
 }

@@ -9,11 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\TalkBot\Service;
 
-use OCA\TalkBot\Engine\CliEngine;
-use OCA\TalkBot\Engine\EngineFactory;
-
 use OCP\App\IAppManager;
-use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\Security\ISecureRandom;
 
@@ -35,7 +31,7 @@ class CommandService {
 	/** Commands that expect no argument: extra words send the message to the model instead. */
 	private const NO_ARG = [
 		'help', 'reset', 'clear', 'status', 'whoami', 'version', 'ping',
-		'undo', 'retry', 'again', 'summary', 'tldr', 'joke', 'flip',
+		'undo', 'retry', 'again', 'summary', 'tldr', 'joke', 'flip', 'model', 'update',
 	];
 
 	private const EIGHT_BALL = [
@@ -48,11 +44,10 @@ class CommandService {
 	public function __construct(
 		private SessionService $sessions,
 		private ConfigService $config,
-		private IGroupManager $groupManager,
 		private IAppManager $appManager,
 		private ISecureRandom $random,
 		private TalkService $talk,
-		private EngineFactory $engines,
+		private HubClient $hub,
 	) {
 	}
 
@@ -78,24 +73,17 @@ class CommandService {
 			case 'reset':
 			case 'clear':
 				$this->sessions->reset($token, $userId);
+				// Also drop AI-Hub's memory of this conversation, where it keeps one.
+				$this->hub->forget($userId, $this->hub->conversationId($token, $userId));
 				return CommandResult::reply($l->t('Conversation reset. I have forgotten what we talked about.'));
 			case 'status':
 				return CommandResult::reply($this->status($token, $userId, $l));
 			case 'model':
-				return CommandResult::reply($this->model($args, $userId, $l));
+				return CommandResult::reply($this->model($l));
 			case 'update':
-				if ($args !== '') {
-					return null;
-				}
-				if (!$this->groupManager->isAdmin($userId)) {
-					return CommandResult::reply($l->t('Only an administrator can update the command line tool.'));
-				}
-				if ($this->config->getMode() !== 'cli' || $this->config->getProvider() !== 'claude') {
-					return CommandResult::reply($l->t('?update works only when the bot uses the Claude command line tool.'));
-				}
-				return CommandResult::task('update', '⏳ ' . $l->t('Checking for an update of the command line tool…'));
+				return CommandResult::reply($l->t('Talk-Bot now answers through AI-Hub. The AI service, model and any command line tool are managed in AI-Hub — open Administration settings → AI-Hub to change or update them.'));
 			case 'whoami':
-				return CommandResult::reply($this->whoami($userId, $l));
+				return CommandResult::reply($l->t('You are %s. Everyone here talks to the same AI-Hub assistant.', [$userId]));
 			case 'version':
 				return CommandResult::reply($l->t('Talk-Bot version %s', [$this->appManager->getAppVersion('ktec_talkbot')]));
 			case 'ping':
@@ -115,15 +103,22 @@ class CommandService {
 				return CommandResult::reply($this->lang($token, $args, $l));
 			case 'undo':
 				$dropped = $this->sessions->dropLastExchange($token, $userId);
+				if ($dropped !== null) {
+					// Keep AI-Hub's memory in step with the edited history.
+					$this->hub->forget($userId, $this->hub->conversationId($token, $userId));
+				}
 				return CommandResult::reply($dropped === null
 					? $l->t('There is nothing to undo yet.')
 					: $l->t('Removed the last exchange.'));
 			case 'retry':
 			case 'again':
 				$question = $this->sessions->dropLastExchange($token, $userId);
-				return $question === null
-					? CommandResult::reply($l->t('There is nothing to answer again yet.'))
-					: CommandResult::prompt($question, true);
+				if ($question === null) {
+					return CommandResult::reply($l->t('There is nothing to answer again yet.'));
+				}
+				// Keep AI-Hub's memory in step with the edited history before re-asking.
+				$this->hub->forget($userId, $this->hub->conversationId($token, $userId));
+				return CommandResult::prompt($question, true);
 			case 'summary':
 			case 'tldr':
 				if ($this->sessions->countTurns($token, $userId) === 0) {
@@ -180,10 +175,10 @@ class CommandService {
 			'- `?lang <code>` — ' . $l->t('set the reply language for this conversation (e.g. ?lang en; ?lang off to follow each user\'s language)'),
 			'*' . $l->t('Info') . '*',
 			'- `?help` — ' . $l->t('show this help'),
-			'- `?status` — ' . $l->t('show the engine, model and memory'),
-			'- `?model` — ' . $l->t('show the model in use and the ones it can be switched to; ?model <name> switches (administrators)'),
-			'- `?update` — ' . $l->t('update the command line tool the bot uses (administrators)'),
-			'- `?whoami` — ' . $l->t('show your access level'),
+			'- `?status` — ' . $l->t('show the AI-Hub connection and memory'),
+			'- `?model` — ' . $l->t('show the model AI-Hub answers with'),
+			'- `?update` — ' . $l->t('where to manage the AI service and model'),
+			'- `?whoami` — ' . $l->t('show who you are'),
 			'- `?version` — ' . $l->t('show the app version'),
 			'*' . $l->t('Fun') . '*',
 			'- `?roll [NdM]` — ' . $l->t('roll dice, e.g. ?roll or ?roll 2d6'),
@@ -197,134 +192,34 @@ class CommandService {
 	}
 
 	private function status(string $token, string $userId, IL10N $l): string {
-		return implode("\n", [
-			$l->t('Engine: %s', [$this->config->getProvider() . ' (' . $this->config->getMode() . ')']),
-			$l->t('Model: %s', [$this->config->getModel() === '' ? '—' : $this->config->getModel()]),
-			$l->n('Remembered exchanges: %n', 'Remembered exchanges: %n', $this->sessions->countTurns($token, $userId)),
-		]);
+		$lines = [];
+		$hub = $this->hub->status();
+		if ($hub === null) {
+			$lines[] = $l->t('AI-Hub is required and is not installed.');
+		} elseif (empty($hub['ready'])) {
+			$lines[] = $l->t('AI-Hub is installed but not set up yet.');
+		} else {
+			$lines[] = $l->t('Engine: %s', ['AI-Hub — ' . $hub['provider'] . ' (' . $hub['mode'] . ')']);
+			$lines[] = $l->t('Model: %s', [$hub['model'] === '' ? '—' : $hub['model']]);
+		}
+		$lines[] = $l->n('Remembered exchanges: %n', 'Remembered exchanges: %n', $this->sessions->countTurns($token, $userId));
+		return implode("\n", $lines);
 	}
 
 	/**
-	 * ?model — the model in use and the ones it can be switched to; ?model <name>
-	 * (or its number in the list) switches, for everybody, so only an administrator
-	 * may (owner, 2026-09-29).
+	 * ?model — informational. It shows the model AI-Hub answers Talk-Bot's chat
+	 * with; the model is chosen in AI-Hub, not here.
 	 */
-	private function model(string $args, string $userId, IL10N $l): string {
-		$current = $this->config->getModel();
-		$engine = null;
-		$models = [];
-		try {
-			$engine = $this->engines->get();
-			$models = array_values($engine->listModels());
-		} catch (\Throwable $e) {
-			$models = [];
+	private function model(IL10N $l): string {
+		$hub = $this->hub->status();
+		if ($hub === null) {
+			return $l->t('AI-Hub is required and is not installed, so there is no model yet. An administrator needs to install and set it up.');
 		}
-		$cli = $engine instanceof CliEngine && $this->config->getProvider() === 'claude';
-		$want = trim($args);
-		if ($want === '') {
-			$lines = [$l->t('Model in use: %s', [$current === '' ? '—' : $current])];
-			if ($models === []) {
-				$lines[] = $l->t('No list of models could be retrieved.');
-			} else {
-				$lines[] = '';
-				$lines[] = $cli
-					? $l->t('Models the installed Claude Code knows:')
-					: $l->t('Models it can be switched to:');
-				foreach ($models as $i => $m) {
-					$lines[] = ($i + 1) . '. `' . $m . '`' . ($m === $current ? ' ← ' . $l->t('in use') : '');
-				}
-				if ($cli) {
-					$lines[] = '';
-					$lines[] = $l->t('The short names %s always mean the newest model of that kind.', ['`' . implode('`, `', CliEngine::CLAUDE_ALIASES) . '`']);
-				}
-			}
-			$lines[] = '';
-			$lines[] = $l->t('To switch, write ?model and a name or its number (administrators only).');
-			return implode("\n", $lines);
+		if (empty($hub['ready'])) {
+			return $l->t('AI-Hub is installed but not set up yet. An administrator chooses the AI service, key and model in Administration settings → AI-Hub.');
 		}
-		if (!$this->groupManager->isAdmin($userId)) {
-			return $l->t('Only an administrator can change the model.');
-		}
-		if (preg_match('/^\d{1,3}$/', $want) === 1) {
-			if (!isset($models[(int)$want - 1])) {
-				return $l->t('There is no model number %s. Write ?model to see the list.', [$want]);
-			}
-			$want = $models[(int)$want - 1];
-		} else {
-			foreach ($models as $m) {
-				if (strcasecmp($m, $want) === 0) {
-					$want = $m;
-				}
-			}
-			if ($cli) {
-				$want = strtolower($want);
-			} elseif (!in_array($want, $models, true)) {
-				return $l->t('%s is not one of the models it can be switched to. Write ?model to see the list.', [$want]);
-			}
-		}
-		if (mb_strlen($want) > 200 || preg_match('/^[A-Za-z0-9._:\/-]+$/', $want) !== 1) {
-			return $l->t('That is not a valid model name.');
-		}
-		if ($want === $current) {
-			return $l->t('%s is already in use.', [$want]);
-		}
-		$resolved = '';
-		if ($cli) {
-			// Tried before it is kept: a name the tool does not accept would leave
-			// every later message without an answer.
-			$probe = $engine->probeModel($want);
-			if (!$probe['ok']) {
-				return '⚠️ ' . $l->t('%s could not be used, so the model was not changed.', [$want])
-					. ($probe['detail'] !== '' ? "\n```\n" . $probe['detail'] . "\n```" : '');
-			}
-			$resolved = $probe['resolved'];
-		}
-		$this->config->setModel($want);
-		$text = $l->t('Model changed: %1$s → %2$s', [$current === '' ? '—' : $current, $want]);
-		if ($resolved !== '' && $resolved !== $want) {
-			$text .= "\n" . $l->t('(It answers as %s.)', [$resolved]);
-		}
-		return $text;
-	}
-
-	/** Run the command line tool's update; one at a time. Called by ReplyService after the notice is posted. */
-	public function runUpdate(IL10N $l): string {
-		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
-		if (!$cache->add('cli_update_running', 1, 900)) {
-			return $l->t('An update is already running. Please wait for it to finish.');
-		}
-		try {
-			$engine = $this->engines->get();
-			if (!$engine instanceof CliEngine) {
-				return $l->t('?update works only when the bot uses the Claude command line tool.');
-			}
-			$before = $engine->listModels();
-			$r = $engine->update();
-			if (!$r['ok']) {
-				return '⚠️ ' . $l->t('The update failed.') . ($r['detail'] !== '' ? "\n```\n" . $r['detail'] . "\n```" : '');
-			}
-			if ($r['before'] !== '' && $r['before'] === $r['after']) {
-				return '✅ ' . $l->t('Already up to date (%s).', [$r['after']]);
-			}
-			$text = '✅ ' . $l->t('Updated: %1$s → %2$s', [$r['before'] === '' ? '—' : $r['before'], $r['after'] === '' ? '—' : $r['after']]);
-			$added = array_values(array_diff($engine->listModels(), $before));
-			if ($added !== []) {
-				$text .= "\n" . $l->t('Models new in this version: %s', ['`' . implode('`, `', $added) . '`']) . "\n" . $l->t('Write ?model to switch.');
-			}
-			return $text;
-		} finally {
-			$cache->remove('cli_update_running');
-		}
-	}
-
-	private function whoami(string $userId, IL10N $l): string {
-		$elevated = $this->config->areAdminToolsEnabled()
-			&& $this->config->getMode() === 'cli'
-			&& $this->groupManager->isAdmin($userId);
-		return $l->t('You are %1$s. You have %2$s.', [
-			$userId,
-			$elevated ? $l->t('administrator tools') : $l->t('no tools (sandboxed)'),
-		]);
+		$model = $hub['model'] === '' ? '—' : $hub['model'];
+		return $l->t('I answer through AI-Hub, model %s. The AI service and model are set in AI-Hub.', [$model]);
 	}
 
 	private function roll(string $args, IL10N $l): string {

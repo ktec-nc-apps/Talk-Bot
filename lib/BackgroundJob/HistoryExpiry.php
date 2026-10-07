@@ -31,5 +31,13 @@ class HistoryExpiry extends TimedJob {
 		if ($days > 0) {
 			$this->sessions->deleteOlderThan($this->time->getTime() - $days * 86400);
 		}
+		// Messages parked for the fallback job (AsyncService) that nobody came for: the
+		// name carries the time they were parked, and a day is far past any cron run.
+		$cfg = \OCP\Server::get(\OCP\IConfig::class);
+		foreach ($cfg->getAppKeys('ktec_talkbot') as $key) {
+			if (preg_match('/^pending_(\d+)_/', $key, $m) === 1 && (int)$m[1] < $this->time->getTime() - 86400) {
+				$cfg->deleteAppValue('ktec_talkbot', $key);
+			}
+		}
 	}
 }

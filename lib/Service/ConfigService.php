@@ -16,53 +16,25 @@ use OCP\Security\ISecureRandom;
 /**
  * Every setting of the app, stored in the Nextcloud app configuration.
  *
- * API keys and the bot secret are written with the "sensitive" flag so they are
- * encrypted at rest and never leave the server in a config dump.
+ * The AI service, key and model no longer live here: Talk-Bot answers through
+ * AI-Hub (ai_hub), which holds them for every app of the Base series. What is
+ * left is Talk-specific: how the bot replies, who may use it, how much it
+ * remembers and how fast it may be asked, plus the secret that signs its own
+ * off-request hand-off. The bot secret is written with the "sensitive" flag so
+ * it is encrypted at rest and never leaves the server in a config dump.
  */
 class ConfigService {
 
-	public const PROVIDERS = ['claude', 'gemini', 'openai'];
-	public const MODES = ['api', 'cli'];
-
-	/** Stands in for a stored API key so the real one never reaches the browser. */
-	private const SECRET_PLACEHOLDER = '********';
-
 	/** Fields the declarative admin form knows about: id => [key, kind, default]. */
 	private const FIELDS = [
-		'provider' => ['provider', 'string', 'claude'],
-		'mode' => ['mode', 'string', 'api'],
-		'claude_api_key' => ['claude_api_key', 'secret', ''],
-		'gemini_api_key' => ['gemini_api_key', 'secret', ''],
-		'openai_api_key' => ['openai_api_key', 'secret', ''],
-		'openai_base_url' => ['openai_base_url', 'string', 'https://openrouter.ai/api/v1'],
 		'reply_language' => ['reply_language', 'string', ''],
 		'system_prompt' => ['system_prompt', 'string', ''],
 		'allowlist_enabled' => ['allowlist_enabled', 'bool', false],
 		'allowed_users' => ['allowed_users', 'string', ''],
-		'cli_enabled' => ['cli_enabled', 'bool', false],
-		'claude_cli_path' => ['claude_cli_path', 'string', 'claude'],
-		'gemini_cli_path' => ['gemini_cli_path', 'string', 'gemini'],
-		'cli_home' => ['cli_home', 'string', ''],
-		'cli_user_tools' => ['cli_user_tools', 'string', ''],
-		'cli_admin_tools' => ['cli_admin_tools', 'string', ''],
-		'bot_account' => ['bot_account', 'string', ''],
 		'history_days' => ['history_days', 'int', 0],
 		'rate_per_minute' => ['rate_per_minute', 'int', 10],
 		'max_parallel_user' => ['max_parallel_user', 'int', 2],
 		'max_parallel_total' => ['max_parallel_total', 'int', 4],
-	];
-
-	/** Model ids are chosen in the tools panel, never typed into the form. */
-	private const MODEL_KEYS = [
-		'claude' => 'claude_model',
-		'gemini' => 'gemini_model',
-		'openai' => 'openai_model',
-	];
-
-	private const MODEL_DEFAULTS = [
-		'claude' => 'claude-opus-5',
-		'gemini' => 'gemini-2.5-pro',
-		'openai' => '',
 	];
 
 	public function __construct(
@@ -105,21 +77,12 @@ class ConfigService {
 		if ($kind === 'int') {
 			return $this->getInt($key, (int)$default);
 		}
-		if ($kind === 'secret') {
-			// Never hand a stored key back to the browser; report only whether one is set.
-			return $this->getString($key) === '' ? '' : self::SECRET_PLACEHOLDER;
-		}
 		return $this->getString($key, (string)$default);
 	}
 
 	public function setFormValue(string $field, mixed $value): void {
 		if (!isset(self::FIELDS[$field])) {
 			return;
-		}
-		// NcSelect emits the whole option object for SELECT fields; unwrap it so we
-		// never store the literal string "Array".
-		if (is_array($value) && array_key_exists('value', $value)) {
-			$value = $value['value'];
 		}
 		[$key, $kind] = self::FIELDS[$field];
 
@@ -135,111 +98,7 @@ class ConfigService {
 			return;
 		}
 		$string = is_scalar($value) ? trim((string)$value) : '';
-		if ($kind === 'secret') {
-			// Nextcloud replaces a stored secret with "dummySecret" before the form
-			// reaches the browser; getting it back means the field was not touched.
-			if ($string === self::SECRET_PLACEHOLDER || $string === 'dummySecret') {
-				return;
-			}
-			$this->setString($key, $string, true);
-			return;
-		}
-		if ($field === 'provider' && !in_array($string, self::PROVIDERS, true)) {
-			return;
-		}
-		if ($field === 'mode' && !in_array($string, self::MODES, true)) {
-			return;
-		}
 		$this->setString($key, $string);
-	}
-
-	// -- engine settings -----------------------------------------------------
-
-	public function getProvider(): string {
-		$provider = $this->getString('provider', 'claude');
-		return in_array($provider, self::PROVIDERS, true) ? $provider : 'claude';
-	}
-
-	/** OpenAI-compatible endpoints are always used through their HTTP API. */
-	public function getMode(): string {
-		if ($this->getProvider() === 'openai') {
-			return 'api';
-		}
-		$mode = $this->getString('mode', 'api');
-		if ($mode === 'cli' && !$this->getBool('cli_enabled')) {
-			return 'api';
-		}
-		return in_array($mode, self::MODES, true) ? $mode : 'api';
-	}
-
-	public function getApiKey(?string $provider = null): string {
-		return $this->getString(($provider ?? $this->getProvider()) . '_api_key');
-	}
-
-	public function getModel(?string $provider = null): string {
-		$provider = $provider ?? $this->getProvider();
-		$key = self::MODEL_KEYS[$provider] ?? null;
-		return $key === null ? '' : $this->getString($key, self::MODEL_DEFAULTS[$provider]);
-	}
-
-	public function setModel(string $model, ?string $provider = null): void {
-		$provider = $provider ?? $this->getProvider();
-		if (isset(self::MODEL_KEYS[$provider])) {
-			$this->setString(self::MODEL_KEYS[$provider], $model);
-		}
-	}
-
-	public function getOpenAiBaseUrl(): string {
-		return rtrim($this->getString('openai_base_url', 'https://openrouter.ai/api/v1'), '/');
-	}
-
-	public function getCliPath(?string $provider = null): string {
-		$provider = $provider ?? $this->getProvider();
-		return $provider === 'gemini'
-			? $this->getString('gemini_cli_path', 'gemini')
-			: $this->getString('claude_cli_path', 'claude');
-	}
-
-	public function isCliEnabled(): bool {
-		return $this->getBool('cli_enabled');
-	}
-
-	public function getCliHome(): string {
-		return $this->getString('cli_home');
-	}
-
-	/**
-	 * Which tools of the command line tool ordinary users may reach.
-	 *
-	 * Empty — the default — means none at all: the bot can only talk.
-	 */
-	public function getUserTools(): string {
-		return $this->getString('cli_user_tools');
-	}
-
-	/**
-	 * Which tools Nextcloud administrators may reach.
-	 *
-	 * Empty — the default — means administrators get exactly what everyone else
-	 * gets. Setting it (for example to "default") hands anyone in the admin group
-	 * real access to this server through a chat message, so it has to be a
-	 * deliberate choice.
-	 */
-	public function getAdminTools(): string {
-		return $this->getString('cli_admin_tools');
-	}
-
-	public function areAdminToolsEnabled(): bool {
-		return $this->getAdminTools() !== '';
-	}
-
-	/**
-	 * The Talk account people open a one-to-one conversation with to reach the bot.
-	 * Administrator tools only work in such a conversation (or one the administrator is
-	 * alone in), so nobody else can read what they return.
-	 */
-	public function getBotAccount(): string {
-		return $this->getString('bot_account');
 	}
 
 	// -- limits (0 = no limit) ----------------------------------------------

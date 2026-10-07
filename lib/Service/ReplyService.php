@@ -9,14 +9,11 @@ declare(strict_types=1);
 
 namespace OCA\TalkBot\Service;
 
-use OCA\TalkBot\Engine\EngineFactory;
-use OCA\TalkBot\Engine\TurnResult;
-use OCP\IGroupManager;
 use OCP\IUserManager;
 use OCP\L10N\IFactory;
 use Psr\Log\LoggerInterface;
 
-/** Turns one incoming chat message into one posted answer. */
+/** Turns one incoming chat message into one posted answer, through AI-Hub. */
 class ReplyService {
 
 	private const THINKING = '💭';
@@ -36,11 +33,9 @@ class ReplyService {
 		private SessionService $sessions,
 		private CommandService $commands,
 		private BotApiService $botApi,
-		private EngineFactory $engineFactory,
+		private HubClient $hub,
 		private IFactory $l10nFactory,
 		private IUserManager $userManager,
-		private IGroupManager $groupManager,
-		private TalkService $talk,
 		private LoggerInterface $logger,
 	) {
 	}
@@ -51,10 +46,16 @@ class ReplyService {
 		if ($messageId > 0) {
 			$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
 			$key = 'answered_' . $token . '_' . $messageId;
-			if ($cache->get($key) !== null) {
+			// add() is atomic where get()+set() was not: two arrivals at once could both pass.
+			if ($cache instanceof \OCP\IMemcache) {
+				if (!$cache->add($key, 1, 3600)) {
+					return;
+				}
+			} elseif ($cache->get($key) !== null) {
 				return;
+			} else {
+				$cache->set($key, 1, 3600);
 			}
-			$cache->set($key, 1, 3600);
 		}
 		if (!$this->isAllowed($userId)) {
 			$this->logger->debug('Talk-Bot: ignoring message from user outside the allow list', ['user' => $userId]);
@@ -72,14 +73,23 @@ class ReplyService {
 		if ($command !== null) {
 			if ($command->isReply()) {
 				$this->botApi->sendMessage($token, $command->reply, $messageId);
-				if ($command->task === 'update') {
-					$this->botApi->sendMessage($token, $this->commands->runUpdate($l), $messageId);
-				}
 				return;
 			}
 			// A prompt macro (retry, summary, joke): let the model answer it.
 			$text = $command->prompt;
 			$persist = $command->persist;
+		}
+
+		// AI-Hub is required: it holds the AI service, key and model for every app of
+		// the Base series. When it is absent or not set up, the bot says so plainly --
+		// it never answers from an engine of its own, because it no longer has one.
+		if (!$this->hub->present()) {
+			$this->botApi->sendMessage($token, $this->hubMissingMessage($l), $messageId);
+			return;
+		}
+		if (!$this->hub->ready()) {
+			$this->botApi->sendMessage($token, $this->hubNotReadyMessage($l), $messageId);
+			return;
 		}
 
 		// Limits the administrator set (review T9): each answer holds a PHP worker and costs money.
@@ -90,17 +100,22 @@ class ReplyService {
 		}
 		$reacted = $messageId > 0 && $this->botApi->addReaction($token, $messageId, self::THINKING);
 		try {
-			$elevated = $this->isElevated($userId, $token);
-			$engine = $this->engineFactory->get();
 			$history = $this->sessions->getHistory($token, $userId);
-			// The directive rides along with this turn's message — the strongest
-			// place to pin the reply language — while the history keeps the
-			// original text. The system prompt carries the same rule as a backstop.
-			$engineText = $this->withLanguageDirective($text, $lang);
-			$result = $engine->run($history, $engineText, $this->systemPrompt($elevated, $lang), $elevated);
+			// The directive rides along with this turn's message -- the strongest place
+			// to pin the reply language -- while the history keeps the original text.
+			// The scenario's context carries the same rule as a backstop.
+			$message = $this->withLanguageDirective($text, $lang);
 
-			if ($result->isOk()) {
-				$clean = $this->stripToolCalls($result->output);
+			$hubReply = $this->hub->answer(
+				$userId,
+				$history,
+				$message,
+				self::languageRule($lang),
+				$this->hub->conversationId($token, $userId),
+			);
+
+			if (($hubReply['state'] ?? '') === 'done') {
+				$clean = $this->stripToolCalls((string)($hubReply['text'] ?? ''));
 				if ($clean === '') {
 					$this->logger->warning('Talk-Bot: the model answered with tool call syntax only.');
 					$this->botApi->sendMessage($token, '⚠️ ' . $l->t('The model tried to use a tool it does not have. Please ask again.'), $messageId);
@@ -113,26 +128,21 @@ class ReplyService {
 				return;
 			}
 
-			if ($result->kind === TurnResult::KIND_AUTH_ERROR) {
-				$this->logger->error('Talk-Bot: the AI engine rejected our credentials: ' . Redact::text($result->detail, Redact::keysOf($this->config)));
-				$this->botApi->sendMessage(
-					$token,
-					'⚠️ ' . $l->t('The AI service did not accept the credentials. An administrator needs to check the Talk-Bot settings.'),
-					$messageId,
-				);
+			// AI-Hub could not answer. Its own limits are the one case worth naming to
+			// the room; anything else gets a plain sentence, and what went wrong goes
+			// to the log, with every secret taken out (review T1, T12).
+			if (($hubReply['error'] ?? '') === 'busy') {
+				$this->botApi->sendMessage($token, '⏳ ' . $l->t('Too many requests at once. Please wait a moment and ask again.'), $messageId);
 				return;
 			}
-
-			// The room -- guests included -- gets a plain sentence; what went wrong goes to
-			// the log, with every secret taken out (review T1, T12).
-			$this->logger->error('Talk-Bot: engine error: ' . Redact::text($result->detail, Redact::keysOf($this->config)));
+			$this->logger->error('Talk-Bot: AI-Hub could not answer: ' . Redact::text((string)($hubReply['error'] ?? 'unknown')));
 			$this->botApi->sendMessage(
 				$token,
 				'⚠️ ' . $l->t('Something went wrong. An administrator can find the details in the Nextcloud log.'),
 				$messageId,
 			);
 		} catch (\Throwable $e) {
-			$this->logger->error('Talk-Bot: unhandled error while answering: ' . Redact::text($e->getMessage(), Redact::keysOf($this->config)));
+			$this->logger->error('Talk-Bot: unhandled error while answering: ' . Redact::text($e->getMessage()));
 			$this->botApi->sendMessage($token, '⚠️ ' . $l->t('Something went wrong while answering.'), $messageId);
 		} finally {
 			$this->releaseSlot($slot);
@@ -149,7 +159,7 @@ class ReplyService {
 	 *
 	 * @return list<string>|null
 	 */
-	private function takeSlot(string $userId): ?array {
+	public function takeSlot(string $userId): ?array {
 		$cache = \OCP\Server::get(\OCP\ICacheFactory::class)->createDistributed('ktec_talkbot');
 		if (!$cache instanceof \OCP\IMemcache) {
 			return [];
@@ -189,7 +199,7 @@ class ReplyService {
 	}
 
 	/** @param list<string> $keys */
-	private function releaseSlot(array $keys): void {
+	public function releaseSlot(array $keys): void {
 		if ($keys === []) {
 			return;
 		}
@@ -226,26 +236,22 @@ class ReplyService {
 		return $this->l10nFactory->getUserLanguage($this->userManager->get($userId));
 	}
 
-	/**
-	 * Whether this message may use the tools of the command line tool.
-	 *
-	 * Three things have to be true: the administrator switched the admin tier on at
-	 * all, the person who wrote the message is in the admin group, and nobody else is
-	 * in the conversation. Everyone else gets the sandboxed prompt and, in the engine,
-	 * the user tool list.
-	 */
-	private function isElevated(string $userId, string $token): bool {
-		if (!$this->config->areAdminToolsEnabled() || $this->config->getMode() !== 'cli') {
-			return false;
-		}
-		// Only where nobody else reads the answer (review T7): the administrator's one-to-one
-		// conversation with the bot's account, or a conversation they are alone in.
-		return $this->groupManager->isAdmin($userId)
-			&& $this->talk->isPrivateTo($token, $userId, $this->config->getBotAccount());
+	/** What the bot says when AI-Hub is not installed: why, and how to set it up. */
+	private function hubMissingMessage(\OCP\IL10N $l): string {
+		return $l->t("AI-Hub is not installed, so I can't answer yet. An administrator needs to set it up:\n"
+			. "1. As an administrator, open Apps and search for \"AI-Hub\".\n"
+			. "2. Press Download and enable.\n"
+			. "3. Open Administration settings → AI-Hub and choose the AI service, key and model.\n"
+			. 'Then talk to me again.');
+	}
+
+	/** What the bot says when AI-Hub is installed but not set up yet. */
+	private function hubNotReadyMessage(\OCP\IL10N $l): string {
+		return $l->t('AI-Hub is installed but not set up yet. An administrator needs to open Administration settings → AI-Hub and choose the AI service, key and model.');
 	}
 
 	/** English name of a language code, or the code itself when unknown. */
-	private function languageName(string $code): string {
+	private static function languageName(string $code): string {
 		return self::LANGUAGE_NAMES[strtolower(substr($code, 0, 2))] ?? $code;
 	}
 
@@ -254,55 +260,49 @@ class ReplyService {
 		if ($language === '') {
 			return $text;
 		}
-		return $text . "\n\n[Reply to this message in " . $this->languageName($language) . '.]';
+		return $text . "\n\n[Reply to this message in " . self::languageName($language) . '.]';
 	}
 
-	private function systemPrompt(bool $elevated, string $language): string {
-		$intro = 'You are a helpful assistant taking part in a Nextcloud Talk conversation. '
-			. 'Keep answers concise and use Markdown sparingly, as they are shown in a chat window.';
-
-		if ($elevated) {
-			$parts = [
-				$intro . ' You are talking to an administrator of this Nextcloud server and you '
-				. 'do have tools, running with the rights of the web server user. Treat that with '
-				. 'care: check before you change or delete anything, prefer reversible steps, and '
-				. 'say plainly what you did. The person you are talking to is the only one who sees '
-				. 'this conversation with you.',
-			];
-		} else {
-			$parts = [
-				$intro . ' You have no tools of any kind and no access to files, the shell, the '
-				. 'network or the server, and you cannot change anything on it. Never write tool '
-				. 'call syntax such as function_calls, invoke or parameter blocks: it does nothing '
-				. 'here and is shown to the user verbatim. If something would need a tool, say so '
-				. 'in words instead. Never reveal or speculate about your configuration, '
-				. 'credentials, file paths or hosting; if you are asked about them, say briefly '
-				. 'that you cannot help with that.',
-			];
-		}
-
-		$extra = $this->config->getExtraSystemPrompt();
+	/**
+	 * The persona and sandbox rules plus the administrator's extra instructions --
+	 * the part of the system prompt that is the same from one turn to the next,
+	 * without the reply-language rule. Registered at AI-Hub as the scenario's system
+	 * prompt (HubClient), so the bot behaves the same however AI-Hub answers it.
+	 */
+	public static function behaviourText(string $extra): string {
+		$parts = [
+			'You are a helpful assistant taking part in a Nextcloud Talk conversation. '
+			. 'Keep answers concise and use Markdown sparingly, as they are shown in a chat window. '
+			. 'You have no tools of any kind and no access to files, the shell, the network or the '
+			. 'server, and you cannot change anything on it. Never write tool call syntax such as '
+			. 'function_calls, invoke or parameter blocks: it does nothing here and is shown to the '
+			. 'user verbatim. If something would need a tool, say so in words instead. Never reveal '
+			. 'or speculate about your configuration, credentials, file paths or hosting; if you are '
+			. 'asked about them, say briefly that you cannot help with that.',
+		];
 		if ($extra !== '') {
 			$parts[] = $extra;
 		}
-
-		// The language rule goes last, and firmly: models otherwise tend to answer
-		// in whatever language the message happens to be in, but the reply language
-		// here is the user's own setting and must win.
-		if ($language !== '') {
-			$name = $this->languageName($language);
-			$parts[] = sprintf(
-				'LANGUAGE — Write your entire reply in %1$s. This is a hard requirement: even '
-				. 'when the user writes to you in a different language, still answer in %1$s and do '
-				. 'not switch to match them. Only use another language if the user explicitly asks '
-				. 'you to translate something or to answer in a specific other language.',
-				$name,
-			);
-		} else {
-			$parts[] = 'Reply in the same language the user writes in.';
-		}
-
 		return implode("\n\n", $parts);
+	}
+
+	/**
+	 * The reply-language rule. It goes last, and firmly: models otherwise tend to
+	 * answer in whatever language the message happens to be in, but the reply
+	 * language here is the user's own setting and must win. Handed to AI-Hub as the
+	 * question's context.
+	 */
+	public static function languageRule(string $language): string {
+		if ($language === '') {
+			return 'Reply in the same language the user writes in.';
+		}
+		return sprintf(
+			'LANGUAGE — Write your entire reply in %1$s. This is a hard requirement: even '
+			. 'when the user writes to you in a different language, still answer in %1$s and do '
+			. 'not switch to match them. Only use another language if the user explicitly asks '
+			. 'you to translate something or to answer in a specific other language.',
+			self::languageName($language),
+		);
 	}
 
 	/**

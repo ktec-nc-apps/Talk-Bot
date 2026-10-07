@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 return [
 	'routes' => [
-		['name' => 'tool#models', 'url' => '/tools/models', 'verb' => 'GET'],
-		['name' => 'tool#test', 'url' => '/tools/test', 'verb' => 'POST'],
-		['name' => 'tool#setModel', 'url' => '/tools/model', 'verb' => 'POST'],
 		['name' => 'process#process', 'url' => '/process', 'verb' => 'POST'],
 	],
 ];

@@ -3,16 +3,25 @@
 	<id>ktec_talkbot</id>
 	<name>Talk-Bot</name>
 
-	<summary>Chat with Claude, Gemini or any OpenAI-compatible model right inside Nextcloud Talk</summary>
-	<summary lang="ja">Nextcloud Talk の中で Claude / Gemini / OpenAI互換モデルと会話できるボット</summary>
+	<summary>Chat with an AI assistant right inside Nextcloud Talk, powered by AI-Hub</summary>
+	<summary lang="ja">Nextcloud Talk の中で AI アシスタントと会話できるボット（AI-Hub が応答を担当）</summary>
 
 	<description><![CDATA[
 **Talk-Bot** turns any Nextcloud Talk conversation into an AI chat.
 
-Enable the app, put your API key in the admin settings, and switch the bot on in a
-conversation — that is the whole setup. No external daemon, no webhook endpoint,
-no Docker image and no separate machine are required: the bot runs entirely inside
-Nextcloud as a Talk in-app bot, in a few hundred kilobytes of PHP.
+Enable the app and switch the bot on in a conversation — that is the whole setup
+on the Talk side. No external daemon, no webhook endpoint, no Docker image and no
+separate machine are required: the bot runs entirely inside Nextcloud as a Talk
+in-app bot, in a few hundred kilobytes of PHP.
+
+### Requires AI-Hub
+
+Talk-Bot no longer talks to a model itself. The AI service, key, model and limits
+live in **AI-Hub** — a separate app that is the one place AI is set up for the
+whole Base series — and Talk-Bot asks it for every answer. Install AI-Hub from the
+App Store, choose the AI service, key and model there, and Talk-Bot uses them. The
+same AI-Hub also serves the other apps, so there is only one place to configure and
+one bill to watch.
 
 ### Light by design
 
@@ -20,68 +29,47 @@ One small app, installed from the App Store like any other. There is nothing els
 to run and nothing else to keep alive. It answers off the request path, so posting
 a message never waits for the model.
 
-### Bring your own model — or your own subscription
+### A plain, sandboxed assistant
 
-- **Native and OpenAI-compatible.** Anthropic Claude and Google Gemini through
-  their own APIs, plus **any OpenAI-compatible endpoint**: OpenRouter, DeepSeek,
-  Qwen/DashScope, Mistral, Groq, OpenAI itself, or a local server such as Ollama,
-  vLLM or LM Studio.
-- **Use a CLI subscription instead of API tokens.** If a Claude or Gemini command
-  line tool is installed on the server, the bot can drive it — so a flat-rate
-  subscription answers your users, with no per-token API bill. Off by default.
-- **Pick the model from a list.** The settings page fetches the models your key
-  can actually use, so there is nothing to type by hand, and only one place to set
-  it. A connection test confirms it answers before your users try it.
-
-### Two tiers: an assistant for everyone, maintenance for admins
-
-- **Ordinary users get a sandbox.** No tools, no files, no shell, no way to touch
-  the server — just a helpful assistant that answers questions.
-- **Administrators can get real access, only if you turn it on.** A request is
-  treated as elevated only when three things are all true: the sender is in the
-  Nextcloud **admin group**, the **command line** engine is selected, and the
-  **Tools for Nextcloud administrators** field is set. Because it keys off
-  Nextcloud's own admin group, this follows your existing roles automatically —
-  there is no separate "bot admin" list to maintain.
-
-When elevated, the bot runs the command line tool **with the rights of the account
-Nextcloud runs as** (its web server / PHP process user, whose name varies by
-system), so an admin can inspect logs, read and change configuration, edit files
-and run commands, straight from a Talk conversation.
-That is not root, but it is still broad — every member of the admin group shares
-it and it fires from an ordinary chat message, so enable it deliberately. Set
-`default` for all tools, or a short list such as `Bash,Read,Edit`; clear the
-field and admins drop back to the sandbox. The user and admin tiers are two
-separate, independently-set lists, and **both are empty by default**. Anyone can
-send `?whoami` to see their own tier.
+Everyone talks to the same assistant: it answers questions and nothing more. It has
+no tools of any kind — no files, no shell, no way to touch the server. (An
+administrator who wants a chat assistant with shell access uses NetBase's assistant
+instead; Talk-Bot does not do that.)
 
 ### And the rest
 
 - **Per-conversation memory.** Each user keeps their own history in every room;
   `?reset` starts over.
 - **Commands.** `?reset`, `?undo`, `?retry`, `?summary` and `?lang <code>` for the
-  conversation; `?help`, `?status`, `?model`, `?whoami` and `?version` for information;
-  `?model <name>` and `?update` for administrators, to switch the model and update Claude Code;
-  and `?roll`, `?flip`, `?8ball`, `?ping` and `?joke` for fun. `?help` lists them all.
+  conversation; `?help`, `?status`, `?model`, `?whoami` and `?version` for
+  information; and `?roll`, `?flip`, `?8ball`, `?ping` and `?joke` for fun. `?help`
+  lists them all.
 - **Access control.** Optionally restrict the bot to an allow-list of users.
 - **Reply language.** Answer always in a fixed language, or mirror the user.
 
 ### Privacy
 
-Messages sent to the bot go to the AI provider you configure, and nowhere else.
-API keys are stored encrypted in the Nextcloud configuration and are never sent
-back to the browser. Point the bot at a local model server and nothing leaves your
-machine at all.
+Messages sent to the bot go through AI-Hub to the AI provider configured there, and
+nowhere else. Point AI-Hub at a local model server and nothing leaves your machine
+at all.
 
-Requires the Nextcloud Talk app.
+Requires the Nextcloud Talk app and the AI-Hub app.
 	]]></description>
 
 	<description lang="ja"><![CDATA[
 **Talk-Bot** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
 
-アプリを有効化し、管理設定に API キーを入れ、会話でボットをオンにする——設定はこれだけです。
+アプリを有効化し、会話でボットをオンにする——Talk 側の設定はこれだけです。
 外部デーモンも Webhook の受け口も Docker イメージも別マシンも不要で、ボットは Talk の
 アプリ内ボットとして、数百KBの PHP だけで Nextcloud の中だけで動作します。
+
+### AI-Hub が必要です
+
+Talk-Bot はもう自分でモデルに接続しません。AI サービス・キー・モデル・制限は、Base
+シリーズ全体で AI をまとめて設定する別アプリ **AI-Hub** にあり、Talk-Bot は応答のたびに
+AI-Hub に問い合わせます。AI-Hub を App Store からインストールし、そこで AI サービス・
+キー・モデルを選べば、Talk-Bot はそれを使って応答します。同じ AI-Hub はほかのアプリも
+使うので、設定する場所も、気にする請求もひとつにまとまります。
 
 ### 軽さが身上
 
@@ -89,59 +77,32 @@ App Store から普通のアプリと同じようにインストールする、1
 別に動かし続けるものはありません。応答はリクエストの外で作るので、メッセージの送信が
 生成完了まで待たされることもありません。
 
-### 好きなモデルを、あるいは手持ちのサブスクを
+### 素のサンドボックスなアシスタント
 
-- **ネイティブ＋OpenAI互換。** Anthropic Claude と Google Gemini はそれぞれの
-  ネイティブAPIで、さらに **OpenAI互換のエンドポイントすべて**（OpenRouter・DeepSeek・
-  Qwen/DashScope・Mistral・Groq・OpenAI 本家、Ollama や vLLM、LM Studio などのローカル
-  サーバー）に対応します。
-- **APIトークンの代わりにCLIのサブスクを使えます。** サーバーに Claude や Gemini の
-  コマンドラインツールが入っていれば、ボットがそれを使えます。定額のサブスクリプションで
-  利用者に応答でき、従量課金のAPI料金は不要です。既定では無効です。
-- **モデルは一覧から選べます。** 設定画面がキーで実際に使えるモデルを取得するので、
-  手で打つ必要はなく、指定する場所も1か所だけです。接続テストで、利用者より先に応答を
-  確認できます。
-
-### 二段構え：全員にはアシスタント、管理者にはメンテナンスも
-
-- **一般ユーザーはサンドボックス。** ツールなし・ファイルなし・シェルなし、サーバーに
-  触れる手段はありません。質問に答えるだけのアシスタントです。
-- **管理者には、有効化したときだけ本当のアクセスを。** リクエストが昇格扱いになるのは、
-  次の3つがすべて満たされたときだけです——送信者が Nextcloud の **admin グループ** に
-  属し、**コマンドライン** エンジンが選ばれ、**Nextcloud管理者向けのツール** の欄が
-  設定されていること。Nextcloud 自身の admin グループを基準にするため、既存の役割に
-  自動で連動し、別途「ボット管理者」の一覧を管理する必要はありません。
-
-昇格時、ボットは **Nextcloud を実行しているアカウント**（Web サーバー／PHP プロセスの
-実行ユーザー。名称はシステムにより異なります）の権限でコマンドラインツールを動かすため、
-管理者はログの確認・設定の参照と変更・ファイルの編集・コマンドの実行を、Talk の会話から
-そのまま行えます。root ではありませんが強力で、admin グループの
-全員が共有し、普通のチャットメッセージで発動するので、有効化は慎重に。全ツールなら
-`default`、あるいは `Bash,Read,Edit` のような短い一覧を指定し、欄を空にすれば管理者も
-サンドボックスに戻ります。一般ユーザー用と管理者用は別々に指定する2つの一覧で、
-**どちらも既定では空**です。誰でも `?whoami` で自分の段を確認できます。
+全員が同じアシスタントと話します。質問に答えるだけで、ツールは一切ありません——ファイルも
+シェルも、サーバーに触れる手段もありません。（シェルを使えるチャットアシスタントが必要な
+管理者は、代わりに NetBase のアシスタントをお使いください。Talk-Bot はそれを行いません。）
 
 ### その他
 
 - **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`?reset` で
   やり直せます。
 - **コマンド。** 会話の操作は `?reset`・`?undo`・`?retry`・`?summary`・`?lang <コード>`、
-  情報は `?help`・`?status`・`?model`・`?whoami`・`?version`、
-  管理者用にモデルを切り替える `?model <名前>` と Claude Code を更新する `?update`、ほかに遊び用の
+  情報は `?help`・`?status`・`?model`・`?whoami`・`?version`、ほかに遊び用の
   `?roll`・`?flip`・`?8ball`・`?ping`・`?joke` があります。一覧は `?help` で出ます。
 - **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
 - **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
 
 ### プライバシー
 
-ボットに送られたメッセージは、設定した AI プロバイダーにのみ送信されます。
-API キーは Nextcloud の設定に暗号化して保存され、ブラウザーへ返されることはありません。
-ローカルのモデルサーバーを指定すれば、データは一切サーバーの外に出ません。
+ボットに送られたメッセージは、AI-Hub を通じて、そこで設定した AI プロバイダーにのみ
+送信されます。AI-Hub でローカルのモデルサーバーを指定すれば、データは一切サーバーの外に
+出ません。
 
-Nextcloud Talk アプリが必要です。
+Nextcloud Talk アプリと AI-Hub アプリが必要です。
 	]]></description>
 
-	<version>2.1.0</version>
+	<version>2.2.0</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>
@@ -154,7 +115,6 @@ Nextcloud Talk アプリが必要です。
 
 	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/01-chat.png</screenshot>
 	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/02-settings.png</screenshot>
-	<screenshot>https://raw.githubusercontent.com/ktec-nc-apps/Talk-Bot/main/screenshots/03-models.png</screenshot>
 
 	<dependencies>
 		<php min-version="8.1"/>
@@ -177,11 +137,9 @@ Nextcloud Talk アプリが必要です。
 	<commands>
 		<command>OCA\TalkBot\Command\Status</command>
 		<command>OCA\TalkBot\Command\Rooms</command>
-		<command>OCA\TalkBot\Command\Test</command>
 	</commands>
 
 	<settings>
-		<admin>OCA\TalkBot\Settings\AdminTools</admin>
 		<admin-section>OCA\TalkBot\Sections\Admin\TalkBotSection</admin-section>
 	</settings>
 </info>

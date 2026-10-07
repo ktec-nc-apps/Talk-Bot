@@ -2,6 +2,51 @@
 
 All notable changes to Talk-Bot.
 
+## 2.2.0 — 2026-10-08
+
+The AI connection engine has been split out of Talk-Bot into a Hub app of its own,
+**AI-Hub**, so that many apps can use AI from one place. From this version, Talk-Bot
+requires AI-Hub.
+（AI 接続エンジンを Talk-Bot から切り離し、様々なアプリで AI を使えるようにする Hub アプリ
+として **AI-Hub** を独立させた。本バージョンから Talk-Bot の利用には AI-Hub のインストールが
+必要。）
+
+### Changed
+
+- **The AI connection engine is now the separate app AI-Hub.** One place sets up AI
+  — the service, key, model and limits — for Talk-Bot and for the other apps of the
+  Base series together. Talk-Bot no longer talks to a model itself; it asks AI-Hub
+  for every answer.
+  （**AI 接続エンジンを独立アプリ AI-Hub に切り出した。** Talk-Bot だけでなく様々なアプリが、
+  1 か所の設定（サービス・キー・モデル・制限）で AI を使える。Talk-Bot は自分でモデルと
+  話さず、AI-Hub に答えを求める。）
+- **AI-Hub is now required.** Install it and set the AI service, key and model there.
+  Talk-Bot's own engine, key and model settings are gone. Until AI-Hub is installed
+  and set up, the bot replies with how to do it instead of answering.
+  （**本バージョンから AI-Hub が必要。** AI サービス・キー・モデルは AI-Hub で設定する。
+  Talk-Bot 側のエンジン・キー・モデルの設定は廃止。AI-Hub が入って設定されるまで、ボットは
+  その手順を返す。）
+
+### Removed
+
+- **Choosing the AI service, key and model, and the connection test, in Talk-Bot's
+  settings** — moved to AI-Hub.
+  （**AI サービス／キー／モデルの選択と接続テスト** は Talk-Bot の設定から外し、AI-Hub へ移した。）
+- **The administrator-tools tier** — the path that let an administrator run shell
+  tools from a chat message. An administrator who wants a chat assistant with shell
+  access uses NetBase's assistant instead.
+  （**管理者ツールの段** — チャットのメッセージからシェル操作を行える経路を廃止した。シェルを
+  使えるチャットアシスタントが必要な管理者は、代わりに NetBase のアシスタントを使う。）
+
+### Fixed
+
+- **The same message is answered once, even when it arrives twice at the same moment.** The check was made in two steps and could miss.
+  （**同じメッセージには一度だけ答える。** 同時に二度届いても。確認が 2 段階で、すり抜けることがあった。）
+- **When AI-Hub is busy, the bot says so** with a short "please wait" instead of a general "something went wrong".
+  （**AI-Hub が混んでいるときは、その旨を返す。** 一般的な「問題が起きました」ではなく。）
+- **The bot's description in Talk** no longer lists the old services.
+  （Talk に表示されるボットの説明から、古い AI サービス名を外した。）
+
 ## 2.1.0 — 2026-09-29
 
 Switch the model and update Claude Code from the chat.
