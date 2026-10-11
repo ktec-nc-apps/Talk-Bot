@@ -4,7 +4,7 @@
 	<name>Talk-Bot</name>
 
 	<summary>Chat with an AI assistant right inside Nextcloud Talk, powered by AI-Hub</summary>
-	<summary lang="ja">Nextcloud Talk の中で AI アシスタントと会話できるボット（AI-Hub が応答を担当）</summary>
+	<summary lang="ja">Nextcloud Talk の中で AI アシスタントとチャットできるボット（返答には AI-Hub を使用）</summary>
 
 	<description><![CDATA[
 **Talk-Bot** turns any Nextcloud Talk conversation into an AI chat.
@@ -57,52 +57,37 @@ Requires the Nextcloud Talk app and the AI-Hub app.
 	]]></description>
 
 	<description lang="ja"><![CDATA[
-**Talk-Bot** は、Nextcloud Talk の会話をそのまま AI チャットにするアプリです。
+**Talk-Bot** は、Nextcloud Talk のどの会話でも AI とチャットできるようにするアプリです。
 
-アプリを有効化し、会話でボットをオンにする——Talk 側の設定はこれだけです。
-外部デーモンも Webhook の受け口も Docker イメージも別マシンも不要で、ボットは Talk の
-アプリ内ボットとして、数百KBの PHP だけで Nextcloud の中だけで動作します。
+アプリを有効にして、会話でボットをオンにするだけで、Talk 側の設定は完了です。外部のデーモンも、Webhook のエンドポイントも、Docker イメージも、別のマシンも必要ありません。ボットは Talk のアプリ内ボットとして、数百KBの PHP だけで、Nextcloud の中で完結して動作します。
 
 ### AI-Hub が必要です
 
-Talk-Bot はもう自分でモデルに接続しません。AI サービス・キー・モデル・制限は、Base
-シリーズ全体で AI をまとめて設定する別アプリ **AI-Hub** にあり、Talk-Bot は応答のたびに
-AI-Hub に問い合わせます。AI-Hub を App Store からインストールし、そこで AI サービス・
-キー・モデルを選べば、Talk-Bot はそれを使って応答します。同じ AI-Hub はほかのアプリも
-使うので、設定する場所も、気にする請求もひとつにまとまります。
+Talk-Bot は、AI モデルに直接接続しなくなりました。AI サービス、API キー、モデル、利用制限は、Base シリーズ全体の AI の設定を 1 か所にまとめた別のアプリ **AI-Hub** で設定し、Talk-Bot は返答のたびに AI-Hub に問い合わせます。App Store から AI-Hub をインストールし、そこで AI サービス、API キー、モデルを選べば、Talk-Bot はその設定を使って返答します。AI-Hub はほかのアプリでも共通で使うため、設定する場所も、利用料金を確認する先も 1 か所で済みます。
 
-### 軽さが身上
+### 軽量設計
 
-App Store から普通のアプリと同じようにインストールする、1つの小さなアプリです。
-別に動かし続けるものはありません。応答はリクエストの外で作るので、メッセージの送信が
-生成完了まで待たされることもありません。
+App Store からほかのアプリと同じようにインストールする、小さなアプリが 1 つだけです。ほかに動かすものも、動かし続けておく必要のあるものもありません。返答はメッセージの投稿処理とは別に作成するため、メッセージを送るときに AI モデルの返答を待たされることはありません。
 
-### 素のサンドボックスなアシスタント
+### サンドボックス化されたシンプルなアシスタント
 
-全員が同じアシスタントと話します。質問に答えるだけで、ツールは一切ありません——ファイルも
-シェルも、サーバーに触れる手段もありません。（シェルを使えるチャットアシスタントが必要な
-管理者は、代わりに NetBase のアシスタントをお使いください。Talk-Bot はそれを行いません。）
+全員が同じアシスタントと会話します。アシスタントは質問に答えるだけで、ツールは一切持っていません。ファイルにもシェルにもアクセスできず、サーバーを操作する手段もありません。（シェルを使えるチャットアシスタントが必要な管理者は、NetBase のアシスタントをお使いください。Talk-Bot にはその機能はありません。）
 
-### その他
+### その他の機能
 
-- **会話ごとの記憶。** 各ユーザーが各ルームで自分の履歴を保持します。`?reset` で
-  やり直せます。
-- **コマンド。** 会話の操作は `?reset`・`?undo`・`?retry`・`?summary`・`?lang <コード>`、
-  情報は `?help`・`?status`・`?model`・`?whoami`・`?version`、ほかに遊び用の
-  `?roll`・`?flip`・`?8ball`・`?ping`・`?joke` があります。一覧は `?help` で出ます。
-- **利用制限。** 許可ユーザーの一覧で利用者を絞れます。
-- **返答の言語。** 常に特定の言語で返す／利用者に合わせる、を選べます。
+- **会話ごとの記憶** ― 各ユーザーの履歴は、ルームごとに個別に保持されます。`?reset` で最初からやり直せます。
+- **コマンド** ― 会話の操作用に `?reset`・`?undo`・`?retry`・`?summary`・`?lang <コード>`、情報の表示用に `?help`・`?status`・`?model`・`?whoami`・`?version`、お遊び用に `?roll`・`?flip`・`?8ball`・`?ping`・`?joke` があります。`?help` ですべてのコマンドを一覧表示できます。
+- **利用できるユーザーの制限** ― 必要に応じて、ボットを使えるユーザーを許可リストで限定できます。
+- **返答言語** ― 常に決まった言語で返答するか、ユーザーの言語に合わせるかを選べます。
 
 ### プライバシー
 
-ボットに送られたメッセージは、AI-Hub を通じて、そこで設定した AI プロバイダーにのみ
-送信されます。AI-Hub でローカルのモデルサーバーを指定すれば、データは一切サーバーの外に
-出ません。
+ボットに送ったメッセージは、AI-Hub を経由して、AI-Hub で設定した AI プロバイダーにだけ送られます。それ以外の送信先はありません。AI-Hub でローカルのモデルサーバーを指定すれば、データがマシンの外に出ることは一切ありません。
 
 Nextcloud Talk アプリと AI-Hub アプリが必要です。
 	]]></description>
 
-	<version>2.2.0</version>
+	<version>2.2.1</version>
 	<licence>agpl</licence>
 	<author>KTEC</author>
 	<namespace>TalkBot</namespace>

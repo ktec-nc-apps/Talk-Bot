@@ -2,14 +2,17 @@
 
 All notable changes to Talk-Bot.
 
+## 2.2.1 — 2026-10-11
+
+Only the Japanese text was rewritten — the README, the App Store description and the changelog — to read naturally. No feature was added or changed.
+（README・App Store の説明・変更履歴の日本語の文章を、自然な日本語に差し替えただけです。機能の追加や変更はありません。）
+
 ## 2.2.0 — 2026-10-08
 
 The AI connection engine has been split out of Talk-Bot into a Hub app of its own,
 **AI-Hub**, so that many apps can use AI from one place. From this version, Talk-Bot
 requires AI-Hub.
-（AI 接続エンジンを Talk-Bot から切り離し、様々なアプリで AI を使えるようにする Hub アプリ
-として **AI-Hub** を独立させた。本バージョンから Talk-Bot の利用には AI-Hub のインストールが
-必要。）
+（AI 接続エンジンを Talk-Bot から切り離し、独立した Hub アプリ **AI-Hub** にしました。多くのアプリが、1 か所の設定で AI を使えるようにするためです。このバージョンから、Talk-Bot を使うには AI-Hub のインストールが必要です。）
 
 ### Changed
 
@@ -17,35 +20,30 @@ requires AI-Hub.
   — the service, key, model and limits — for Talk-Bot and for the other apps of the
   Base series together. Talk-Bot no longer talks to a model itself; it asks AI-Hub
   for every answer.
-  （**AI 接続エンジンを独立アプリ AI-Hub に切り出した。** Talk-Bot だけでなく様々なアプリが、
-  1 か所の設定（サービス・キー・モデル・制限）で AI を使える。Talk-Bot は自分でモデルと
-  話さず、AI-Hub に答えを求める。）
+  （**AI 接続エンジンを、独立したアプリ AI-Hub に移しました。** AI の設定（サービス・API キー・モデル・利用制限）を 1 か所で行い、Talk-Bot と Base シリーズのほかのアプリで共通に使えます。Talk-Bot は自分でモデルに接続せず、回答のたびに AI-Hub に問い合わせます。）
 - **AI-Hub is now required.** Install it and set the AI service, key and model there.
   Talk-Bot's own engine, key and model settings are gone. Until AI-Hub is installed
   and set up, the bot replies with how to do it instead of answering.
-  （**本バージョンから AI-Hub が必要。** AI サービス・キー・モデルは AI-Hub で設定する。
-  Talk-Bot 側のエンジン・キー・モデルの設定は廃止。AI-Hub が入って設定されるまで、ボットは
-  その手順を返す。）
+  （**AI-Hub が必須になりました。** AI-Hub をインストールし、AI サービス・API キー・モデルを AI-Hub で設定してください。Talk-Bot 側のエンジン・API キー・モデルの設定はなくなりました。AI-Hub をインストールして設定するまでは、ボットは質問に答える代わりに、その手順を返答します。）
 
 ### Removed
 
 - **Choosing the AI service, key and model, and the connection test, in Talk-Bot's
   settings** — moved to AI-Hub.
-  （**AI サービス／キー／モデルの選択と接続テスト** は Talk-Bot の設定から外し、AI-Hub へ移した。）
+  （**Talk-Bot の設定画面での AI サービス・API キー・モデルの選択と接続テスト** ― AI-Hub に移しました。）
 - **The administrator-tools tier** — the path that let an administrator run shell
   tools from a chat message. An administrator who wants a chat assistant with shell
   access uses NetBase's assistant instead.
-  （**管理者ツールの段** — チャットのメッセージからシェル操作を行える経路を廃止した。シェルを
-  使えるチャットアシスタントが必要な管理者は、代わりに NetBase のアシスタントを使う。）
+  （**管理者向けツールの段階** ― 管理者がチャットのメッセージからシェルのツールを実行できる仕組みを廃止しました。シェルを使えるチャットアシスタントが必要な管理者は、NetBase のアシスタントをお使いください。）
 
 ### Fixed
 
 - **The same message is answered once, even when it arrives twice at the same moment.** The check was made in two steps and could miss.
-  （**同じメッセージには一度だけ答える。** 同時に二度届いても。確認が 2 段階で、すり抜けることがあった。）
+  （**同じメッセージが同時に 2 回届いても、回答は 1 回だけになりました。** 重複の確認が 2 段階に分かれていたため、すり抜けることがありました。）
 - **When AI-Hub is busy, the bot says so** with a short "please wait" instead of a general "something went wrong".
-  （**AI-Hub が混んでいるときは、その旨を返す。** 一般的な「問題が起きました」ではなく。）
+  （**AI-Hub が混み合っているときは、その旨を伝えるようになりました。** 一般的な「問題が発生しました」ではなく、「しばらくお待ちください」と短く返答します。）
 - **The bot's description in Talk** no longer lists the old services.
-  （Talk に表示されるボットの説明から、古い AI サービス名を外した。）
+  （**Talk に表示されるボットの説明** から、古い AI サービスの名前を削除しました。）
 
 ## 2.1.0 — 2026-09-29
 
