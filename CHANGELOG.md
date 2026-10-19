@@ -2,6 +2,11 @@
 
 All notable changes to Talk-Bot.
 
+## 2.2.2 — 2026-10-19
+
+The bot's replies and settings in twenty-one languages, where until now there were English and Japanese only; and translations corrected after a review, among them the Japanese note shown when AI-Hub is installed but not yet set up. No feature was added or changed.
+（ボットの返事と設定画面を 21 の言語に対応させました。これまでは英語と日本語だけでした。あわせて翻訳の見直しを受けて訳を直しました。AI-Hub をインストールしたものの設定していないときに出る日本語の案内も、分かりやすくしました。機能の追加や変更はありません。）
+
 ## 2.2.1 — 2026-10-11
 
 Only the Japanese text was rewritten — the README, the App Store description and the changelog — to read naturally. No feature was added or changed.
