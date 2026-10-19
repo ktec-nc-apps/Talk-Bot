@@ -21,7 +21,7 @@
         "Answers in progress at once, for everyone together": "全員合わせて同時に作成中の回答の数",
         "Each answer keeps one PHP worker busy until it is done. 0 = no limit.": "回答 1 件ごとに、終わるまで PHP のワーカーを 1 つ使います。0 は無制限です。",
         "AI-Hub is not installed, so I can't answer yet. An administrator needs to set it up:\n1. As an administrator, open Apps and search for \"AI-Hub\".\n2. Press Download and enable.\n3. Open Administration settings → AI-Hub and choose the AI service, key and model.\nThen talk to me again.": "AI-Hub が入っていないため、まだお答えできません。管理者による設定が必要です。\n1. 管理者で「アプリ」を開き「AI-Hub」を検索。\n2.「ダウンロードして有効にする」を押す。\n3.「管理者設定 → AI-Hub」で AI サービス・キー・モデルを選ぶ。\nその後もう一度話しかけてください。",
-        "AI-Hub is installed but not set up yet. An administrator needs to open Administration settings → AI-Hub and choose the AI service, key and model.": "AI-Hub の設定が未完了です。管理者が『管理者設定 → AI-Hub』で AI サービス・キー・モデルを設定してください。",
+        "AI-Hub is installed but not set up yet. An administrator needs to open Administration settings → AI-Hub and choose the AI service, key and model.": "AI-Hub はインストールされていますが未設定です。管理者が「管理者設定 → AI-Hub」で AI サービス・キー・モデルを設定してください。",
         "Too many requests at once. Please wait a moment and ask again.": "ただいま依頼が集中しています。少し待ってから、もう一度お送りください。",
         "The model tried to use a tool it does not have. Please ask again.": "モデルが使用できないツールを呼び出そうとしました。もう一度質問してください。",
         "Something went wrong. An administrator can find the details in the Nextcloud log.": "うまくいきませんでした。詳しい内容は、管理者が Nextcloud のログで確認できます。",
